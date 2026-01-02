@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en" id="htmlLang">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Settings - LetShare</title>
+    <link rel="stylesheet" href="css/settings.css">
+</head>
+<body>
+    <div class="bg-blob blob-1"></div>
+    <div class="bg-blob blob-2"></div>
+
+    <div class="container">
+        <header>
+            <a href="Test.html" class="logo">
+                
+                <span class="logo-text">LetShare</span>
+                <p>Give, Swap, Grow</p>
+            </a>
+            <a href="profile.html" class="back-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"></path>
+                </svg>
+                Back to Profile
+            </a>
+        </header>
+
+        <div class="settings-header">
+            <h1>Settings</h1>
+            <p>Manage your account settings and preferences</p>
+        </div>
+
+        <!-- Profile Section -->
+        <div class="settings-section">
+            <h2 class="section-title">
+                <!-- <span class="section-icon">👤</span> -->
+                Profile
+            </h2>
+            
+            <div class="form-group">
+                <div class="avatar-upload">
+                    <div class="avatar-preview" id="avatarPreview"></div>
+                    <div>
+                        <label for="avatarInput" class="avatar-upload-btn">Change Photo</label>
+                        <input type="file" id="avatarInput" accept="image/*" onchange="handleAvatarUpload(event)">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input type="text" class="form-input" id="fullName" value="Fausat Akintoyesé" placeholder="Enter your full name">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-input" id="email" value="fausat@example.com" placeholder="Enter your email">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Department / Major</label>
+                <select class="form-select" id="department">
+                    <option value="Finance">Finance</option>
+                    <option value="Accounting">Accounting</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Management">Management</option>
+                    <option value="Economics">Economics</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
+        </div>
+
+        <!-- Notifications Section -->
+        <div class="settings-section">
+            <h2 class="section-title">
+               
+                Notifications
+            </h2>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">New Messages</div>
+                    <div class="setting-description">Get notified when you receive new messages</div>
+                </div>
+                <div class="toggle-switch active" onclick="toggleSwitch(this)" data-setting="messages"></div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">New Requests</div>
+                    <div class="setting-description">Get notified when someone requests your items</div>
+                </div>
+                <div class="toggle-switch active" onclick="toggleSwitch(this)" data-setting="requests"></div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">Request Accepted</div>
+                    <div class="setting-description">Get notified when your request is accepted</div>
+                </div>
+                <div class="toggle-switch active" onclick="toggleSwitch(this)" data-setting="accepted"></div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">New Reviews</div>
+                    <div class="setting-description">Get notified when you receive a new review</div>
+                </div>
+                <div class="toggle-switch active" onclick="toggleSwitch(this)" data-setting="reviews"></div>
+            </div>
+            
+            <div class="setting-item" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb;">
+                <div class="setting-info">
+                    <div class="setting-label">Browser Push Notifications</div>
+                    <div class="setting-description">Receive notifications even when the site is closed</div>
+                </div>
+                <div class="toggle-switch" id="pushNotificationsToggle" onclick="togglePushNotifications(this)" data-setting="pushNotifications"></div>
+            </div>
+            
+            <div class="setting-item" id="testPushNotificationItem" style="display: none;">
+                <button class="btn btn-secondary" onclick="testPushNotification()" style="width: 100%; margin-top: 0.5rem;">
+                    Send Test Notification
+                </button>
+            </div>
+        </div>
+
+        <!-- Privacy Section -->
+        <div class="settings-section">
+            <h2 class="section-title">
+                Privacy
+            </h2>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">Show Department</div>
+                    <div class="setting-description">Display your department on your profile</div>
+                </div>
+                <div class="toggle-switch" id="showDepartmentToggle" onclick="togglePrivacySetting(this, 'show_department')" data-setting="show_department"></div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">Show Email</div>
+                    <div class="setting-description">Display your email address on your profile</div>
+                </div>
+                <div class="toggle-switch" id="showEmailToggle" onclick="togglePrivacySetting(this, 'show_email')" data-setting="show_email"></div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">Allow Messages from Anyone</div>
+                    <div class="setting-description">Let other students message you even if you haven't exchanged</div>
+                </div>
+                <div class="toggle-switch" id="allowMessagesToggle" onclick="togglePrivacySetting(this, 'allow_messages_from_anyone')" data-setting="allow_messages_from_anyone"></div>
+            </div>
+        </div>
+
+        <!-- Preferences Section -->
+        <div class="settings-section">
+            <h2 class="section-title">
+                Preferences
+            </h2>
+
+            <div class="form-group">
+                <label class="form-label">Language</label>
+                <select class="form-select" id="language">
+                    <option value="en">English</option>
+                    <option value="fr">Français</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Date Format</label>
+                <select class="form-select" id="dateFormat">
+                    <option value="mm/dd/yyyy">MM/DD/YYYY</option>
+                    <option value="dd/mm/yyyy">DD/MM/YYYY</option>
+                    <option value="yyyy-mm-dd">YYYY-MM-DD</option>
+                </select>
+            </div>
+
+            <button class="btn btn-primary" onclick="savePreferences()">Save Preferences</button>
+        </div>
+
+        <!-- Account Section -->
+        <div class="settings-section">
+            <h2 class="section-title">
+                
+                Account
+            </h2>
+
+            <div class="form-group">
+                <label class="form-label">Current Password</label>
+                <input type="password" class="form-input" id="currentPassword" placeholder="Enter current password">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">New Password</label>
+                <input type="password" class="form-input" id="newPassword" placeholder="Enter new password">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Confirm New Password</label>
+                <input type="password" class="form-input" id="confirmPassword" placeholder="Confirm new password">
+            </div>
+
+            <button class="btn btn-primary" onclick="changePassword()">Change Password</button>
+            
+            <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e5e7eb;">
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <div class="setting-label">Logout</div>
+                        <div class="setting-description">Sign out of your account</div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="logout()" style="background: rgba(239, 68, 68, 1); color: #ffffff; border: 1px solid #e5e7eb;">Logout</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Management -->
+        <div class="settings-section">
+            <h2 class="section-title">
+                Data Management
+            </h2>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">Export My Data</div>
+                    <div class="setting-description">Download a copy of all your data</div>
+                </div>
+                <button class="btn btn-secondary" onclick="exportData()">Export</button>
+            </div>
+        </div>
+
+        <!-- About Section -->
+        <div class="settings-section">
+            <h2 class="section-title">
+                About
+            </h2>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">App Version</div>
+                    <div class="setting-description">LetShare v1.0.0</div>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">Help & Support</div>
+                    <div class="setting-description">Get help or contact support</div>
+                </div>
+                <button class="btn btn-link" onclick="window.open('mailto:support@letshare.com')">Contact</button>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">Terms of Service</div>
+                    <div class="setting-description">Read our terms and conditions</div>
+                </div>
+                <button class="btn btn-link" onclick="alert('Terms of Service page')">View</button>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">Privacy Policy</div>
+                    <div class="setting-description">Learn how we protect your data</div>
+                </div>
+                <button class="btn btn-link" onclick="alert('Privacy Policy page')">View</button>
+            </div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="settings-section danger-zone">
+            <h2 class="section-title">
+                Danger Zone
+            </h2>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label">Delete Account</div>
+                    <div class="setting-description">Permanently delete your account and all associated data</div>
+                </div>
+                <button class="btn btn-danger" onclick="deleteAccount()">Delete Account</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast"></div>
+
+    <script src="js/api.js"></script>
+    <script src="js/push-notifications.js"></script>
+    <script src="js/settings.js"></script>
+</body>
+</html>
+

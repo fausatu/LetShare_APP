@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - LetShare</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+    <div class="auth-container">
+        <!-- Left side - Illustration -->
+        <div class="auth-illustration">
+            <div class="illustration-content">
+                <div class="illustration-icon">
+                     <H1 class="illustration-title">LetShare</H1>
+                </div>
+                <h2 data-i18n="illustrationTitle">Transformez vos idées en réalité</h2>
+                <p data-i18n="illustrationText">Recevez des offres attractives de la communauté. Partagez, échangez et grandissez ensemble.</p>
+            </div>
+        </div>
+        
+        <!-- Right side - Form -->
+        <div class="auth-form-section">
+            <div class="auth-form-box">
+                <!-- Language Selector -->
+                <div style="position: absolute; top: 20px; right: 20px;">
+                    <select id="languageSelector" style="padding: 0.5rem 1rem; border: 2px solid #e5e7eb; border-radius: 0.5rem; background: white; color: #1f2937; font-size: 0.875rem; cursor: pointer; outline: none;" onchange="changeLanguage(this.value)">
+                        <option value="fr">Français</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+                
+                <div class="auth-form-header">
+                    <div class="logo">
+                        <!-- <img src="Letshare_Icon.png" alt="LetShare Logo"> -->
+                        <!-- <span style="font-size: 1.5rem; font-weight: 700; color: #1f2937;">LetShare</span> -->
+                    </div>
+                    <h1 data-i18n="loginTitle">Connectez-vous à votre compte</h1>
+                    <p data-i18n="loginSubtitle">Découvrez ce qui se passe dans votre communauté</p>
+                </div>
+                
+                <div class="error-message" id="errorMessage"></div>
+                
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label class="form-label" for="email" data-i18n="emailLabel">Email</label>
+                        <input type="email" class="form-input" id="email" data-i18n-placeholder="emailPlaceholder" placeholder="votre.email@student.clermont-sb.fr" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="password" data-i18n="passwordLabel">Mot de passe</label>
+                        <input type="password" class="form-input" id="password" data-i18n-placeholder="passwordPlaceholder" placeholder="Entrez votre mot de passe" required>
+                    </div>
+                    
+                    <div class="form-options">
+                        <label class="remember-me">
+                            <input type="checkbox" id="rememberMe">
+                            <span data-i18n="rememberMe">Se souvenir de moi</span>
+                        </label>
+                        <a href="#" class="forgot-password" id="forgotPasswordLink" data-i18n="forgotPassword">Mot de passe oublié ?</a>
+                    </div>
+                    
+                    <button type="submit" class="btn-login" id="loginBtn" data-i18n="loginButton">Se connecter</button>
+                    
+                    <div style="margin: 1.5rem 0; text-align: center; color: #9ca3af; font-size: 0.875rem;" data-i18n="or">ou</div>
+                    
+                    <button type="button" class="btn-google" id="btnGoogleAuth">
+                        <svg width="20" height="20" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        <span data-i18n="continueWithGoogle">Continuer avec Google</span>
+                    </button>
+                    
+                    <div style="margin: 1.5rem 0; text-align: center; color: #9ca3af; font-size: 0.875rem;" data-i18n="or">ou</div>
+                    
+                    <button type="button" class="btn-google" id="btnEmailAuth" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                        <span data-i18n="loginWithEmail">Se connecter avec Email</span>
+                    </button>
+                </form>
+                
+                <div class="register-link">
+                    <span data-i18n="notRegisteredYet">Pas encore inscrit ?</span> <a href="register.html" data-i18n="createAccount">Créer un compte</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Forgot Password Modal -->
+    <!-- Preload modal (hidden but in DOM) -->
+    <div class="modal" id="forgotPasswordModal" style="display: none;">
+        <div class="modal-content" style="max-width: 450px; position: relative;">
+            <button class="modal-close" onclick="closeForgotPasswordModal()">✕</button>
+            <h2 style="margin-bottom: 1.5rem;" data-i18n="forgotPasswordTitle">Mot de passe oublié</h2>
+            <p style="color: #6b7280; margin-bottom: 1.5rem;" data-i18n="forgotPasswordText">Entrez votre adresse email et nous vous enverrons un lien pour réinitialiser votre mot de passe.</p>
+            <p style="color: #9ca3af; font-size: 0.875rem; margin-bottom: 1rem;" data-i18n="forgotPasswordHint">Le lien sera valide pendant 1 heure.</p>
+            <div class="error-message" id="forgotPasswordError"></div>
+            <form id="forgotPasswordForm">
+                <div class="form-group">
+                    <label class="form-label" for="forgotEmail" data-i18n="emailLabel">Email</label>
+                    <input type="email" class="form-input" id="forgotEmail" data-i18n-placeholder="emailPlaceholder" placeholder="your.email@student.university.edu" required>
+                </div>
+                <button type="submit" class="btn-login" id="forgotPasswordBtn" data-i18n="sendResetLink">Envoyer le lien de réinitialisation</button>
+            </form>
+        </div>
+    </div>
+    
+    <script src="js/api.js"></script>
+    <script>
+        // Translations
+        const translations = {
+            en: {
+                loginTitle: "Login to your Account",
+                loginSubtitle: "See what is going on with your community",
+                illustrationTitle: "Turn your ideas into reality",
+                illustrationText: "Get attractive offers from the community. Share, exchange, and grow together.",
+                emailLabel: "Email",
+                emailPlaceholder: "your.email@student.university.edu",
+                passwordLabel: "Password",
+                passwordPlaceholder: "Enter your password",
+                rememberMe: "Remember Me",
+                forgotPassword: "Forgot Password?",
+                loginButton: "Login",
+                loggingIn: "Logging in...",
+                loginFailed: "Login failed",
+                loginFailedTryAgain: "Login failed. Please try again.",
+                forgotPasswordTitle: "Forgot Password",
+                forgotPasswordText: "Enter your email address and we'll send you a link to reset your password.",
+                sendResetLink: "Send Reset Link",
+                sending: "Sending...",
+                resetLinkSent: "Password reset link has been sent to your email.",
+                errorSendingResetLink: "Error sending reset link. Please try again.",
+                invalidEmail: "Please enter a valid email address.",
+                or: "or",
+                continueWithGoogle: "Continue with Google",
+                loginWithEmail: "Login with Email",
+                notRegisteredYet: "Not Registered Yet?",
+                createAccount: "Create an account",
+                verifyEmailWarning: "Please verify your email address to access all features."
+            },
+            fr: {
+                loginTitle: "Connectez-vous à votre compte",
+                loginSubtitle: "Découvrez ce qui se passe dans votre communauté",
+                illustrationTitle: "Transformez vos idées en réalité",
+                illustrationText: "Recevez des offres attractives de la communauté. Partagez, échangez et grandissez ensemble.",
+                emailLabel: "Email",
+                emailPlaceholder: "votre.email@student.clermont-sb.fr",
+                passwordLabel: "Mot de passe",
+                passwordPlaceholder: "Entrez votre mot de passe",
+                rememberMe: "Se souvenir de moi",
+                forgotPassword: "Mot de passe oublié ?",
+                loginButton: "Se connecter",
+                loggingIn: "Connexion...",
+                loginFailed: "Échec de la connexion",
+                loginFailedTryAgain: "Échec de la connexion. Veuillez réessayer.",
+                forgotPasswordTitle: "Mot de passe oublié",
+                forgotPasswordText: "Entrez votre adresse email et nous vous enverrons un lien pour réinitialiser votre mot de passe.",
+                forgotPasswordHint: "Le lien sera valide pendant 1 heure.",
+                sendResetLink: "Envoyer le lien de réinitialisation",
+                sending: "Envoi en cours...",
+                resetLinkSent: "Un lien de réinitialisation a été envoyé à votre email.",
+                errorSendingResetLink: "Erreur lors de l'envoi du lien. Veuillez réessayer.",
+                invalidEmail: "Veuillez entrer une adresse email valide.",
+                or: "ou",
+                continueWithGoogle: "Continuer avec Google",
+                loginWithEmail: "Se connecter avec Email",
+                notRegisteredYet: "Pas encore inscrit ?",
+                createAccount: "Créer un compte",
+                verifyEmailWarning: "Veuillez vérifier votre adresse email pour accéder à toutes les fonctionnalités."
+            }
+        };
+        
+        // Get current language
+        // Get language from localStorage, browser language, or default
+        function getBrowserLanguage() {
+            const browserLang = navigator.language || navigator.userLanguage;
+            if (browserLang.startsWith('fr')) return 'fr';
+            return 'en';
+        }
+        
+        function getCurrentLanguage() {
+            const storedLang = localStorage.getItem('language');
+            if (storedLang) return storedLang;
+            const browserLang = getBrowserLanguage();
+            localStorage.setItem('language', browserLang); // Save detected language
+            return browserLang;
+        }
+        
+        // Get translation
+        function t(key) {
+            const lang = getCurrentLanguage();
+            return translations[lang] && translations[lang][key] ? translations[lang][key] : (translations.en[key] || key);
+        }
+        
+        // Apply translations
+        function applyTranslations() {
+            const lang = getCurrentLanguage();
+            document.documentElement.lang = lang;
+            document.getElementById('languageSelector').value = lang;
+            
+            // Translate elements with data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(function(el) {
+                const key = el.getAttribute('data-i18n');
+                const translation = t(key);
+                if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                    // Don't change input values, only placeholders
+                } else if (el.tagName === 'BUTTON' || el.tagName === 'A') {
+                    const svg = el.querySelector('svg');
+                    if (svg) {
+                        el.innerHTML = '';
+                        el.appendChild(svg);
+                        el.appendChild(document.createTextNode(translation));
+                    } else {
+                        el.textContent = translation;
+                    }
+                } else {
+                    el.textContent = translation;
+                }
+            });
+            
+            // Translate placeholders
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
+                const key = el.getAttribute('data-i18n-placeholder');
+                el.placeholder = t(key);
+            });
+        }
+        
+        // Change language
+        function changeLanguage(lang) {
+            const settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+            settings.language = lang;
+            localStorage.setItem('userSettings', JSON.stringify(settings));
+            applyTranslations();
+        }
+        
+        // Initialize translations on page load
+        applyTranslations();
+        
+        // Google OAuth button
+        document.getElementById('btnGoogleAuth').addEventListener('click', function() {
+            // Redirect to Google OAuth login (with action=login parameter)
+            window.location.href = 'api/auth/google/login.php?action=login';
+        });
+        
+        // Email login button
+        document.getElementById('btnEmailAuth').addEventListener('click', function() {
+            // Redirect to email login page
+            window.location.href = 'email_login.html';
+        });
+        
+        // Forgot password link
+        document.getElementById('forgotPasswordLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            // Apply translations to modal when opening
+            applyTranslations();
+            // Focus on email input when modal opens
+            setTimeout(function() {
+                document.getElementById('forgotEmail').focus();
+            }, 100);
+            document.getElementById('forgotPasswordModal').style.display = 'flex';
+        });
+        
+        // Close modal when clicking on overlay
+        document.getElementById('forgotPasswordModal').addEventListener('click', function(e) {
+            if (e.target.id === 'forgotPasswordModal') {
+                closeForgotPasswordModal();
+            }
+        });
+        
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('forgotPasswordModal').style.display === 'flex') {
+                closeForgotPasswordModal();
+            }
+        });
+        
+        // Forgot password form
+        document.getElementById('forgotPasswordForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('forgotEmail').value;
+            const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
+            const errorMessage = document.getElementById('forgotPasswordError');
+            
+            // Validate email format before sending
+            if (!email || !email.includes('@')) {
+                errorMessage.textContent = t('invalidEmail');
+                errorMessage.classList.add('show');
+                return;
+            }
+            
+            forgotPasswordBtn.disabled = true;
+            forgotPasswordBtn.innerHTML = '<span class="spinner"></span>' + t('sending');
+            errorMessage.classList.remove('show');
+            
+            let retryCount = 0;
+            const maxRetries = 2;
+            
+            async function sendRequest() {
+                try {
+                    const response = await fetch('api/auth/forgot_password.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email: email })
+                });
+                
+                // Check if response is ok
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                
+                // Get response text first to debug
+                const responseText = await response.text();
+                
+                // Try to parse as JSON
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    console.error('Failed to parse JSON:', responseText);
+                    throw new Error('Invalid response from server. Please try again.');
+                }
+                
+                    if (data.success) {
+                        // Use translation instead of API message to ensure language consistency
+                        errorMessage.innerHTML = '<span class="success-icon"></span>' + t('resetLinkSent');
+                        errorMessage.style.background = '#f0fdf4';
+                        errorMessage.style.borderColor = '#10b981';
+                        errorMessage.style.color = '#059669';
+                        errorMessage.classList.add('show');
+                        
+                        // Close modal after 3 seconds (enough time to read the message)
+                        setTimeout(function() {
+                            closeForgotPasswordModal();
+                        }, 3000);
+                        forgotPasswordBtn.disabled = false;
+                        forgotPasswordBtn.textContent = t('sendResetLink');
+                        return; // Success, exit function
+                    } else {
+                        throw new Error(data.message || t('errorSendingResetLink'));
+                    }
+                } catch (error) {
+                    // Retry on network errors
+                    if (error.message.includes('Network') && retryCount < maxRetries) {
+                        retryCount++;
+                        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+                        return sendRequest(); // Retry
+                    }
+                    
+                    console.error('Error:', error);
+                    errorMessage.textContent = error.message || t('errorSendingResetLink');
+                    errorMessage.classList.add('show');
+                    forgotPasswordBtn.disabled = false;
+                    forgotPasswordBtn.textContent = t('sendResetLink');
+                }
+            }
+            
+            // Start the request
+            sendRequest();
+        });
+        
+        function closeForgotPasswordModal() {
+            document.getElementById('forgotPasswordModal').style.display = 'none';
+            document.getElementById('forgotPasswordForm').reset();
+            document.getElementById('forgotPasswordError').classList.remove('show');
+        }
+        
+        // Check for error messages from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('error')) {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = decodeURIComponent(urlParams.get('error'));
+            errorMessage.classList.add('show');
+        }
+        
+        // Check for info messages from URL
+        if (urlParams.get('message')) {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = decodeURIComponent(urlParams.get('message'));
+            errorMessage.style.background = '#f0fdf4';
+            errorMessage.style.borderColor = '#10b981';
+            errorMessage.style.color = '#059669';
+            errorMessage.classList.add('show');
+        }
+        
+        // Form submission
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const rememberMe = document.getElementById('rememberMe')?.checked || false;
+            const loginBtn = document.getElementById('loginBtn');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            // Disable button
+            loginBtn.disabled = true;
+            loginBtn.textContent = t('loggingIn');
+            errorMessage.classList.remove('show');
+            
+            try {
+                const response = await authAPI.login(email, password, rememberMe);
+                
+                if (response.success) {
+                    // Store user data in localStorage for quick access
+                    localStorage.setItem('currentUser', JSON.stringify(response.data.user));
+                    localStorage.setItem('authToken', response.data.token);
+                    
+                    // Check if email is verified
+                    if (!response.data.email_verified) {
+                        // Show warning but allow login
+                        errorMessage.textContent = response.message || t('verifyEmailWarning');
+                        errorMessage.style.background = '#fef3c7';
+                        errorMessage.style.borderColor = '#f59e0b';
+                        errorMessage.style.color = '#92400e';
+                        errorMessage.classList.add('show');
+                        
+                        // Still redirect but with warning
+                        setTimeout(() => {
+                            // Check for redirect parameter
+                            const urlParams = new URLSearchParams(window.location.search);
+                            const redirect = urlParams.get('redirect');
+                            const itemId = urlParams.get('id');
+                            
+                            if (redirect === 'item' && itemId) {
+                                window.location.href = 'Test.html?item=' + itemId;
+                            } else {
+                                window.location.href = 'Test.html';
+                            }
+                        }, 2000);
+                    } else {
+                        // Check for redirect parameter
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const redirect = urlParams.get('redirect');
+                        const itemId = urlParams.get('id');
+                        
+                        if (redirect === 'item' && itemId) {
+                            // Redirect to item modal on main page
+                            window.location.href = 'Test.html?item=' + itemId;
+                        } else {
+                            // Redirect to main page
+                            window.location.href = 'Test.html';
+                        }
+                    }
+                } else {
+                    throw new Error(response.message || t('loginFailed'));
+                }
+            } catch (error) {
+                errorMessage.textContent = error.message || t('loginFailedTryAgain');
+                errorMessage.classList.add('show');
+                loginBtn.disabled = false;
+                loginBtn.textContent = t('loginButton');
+            }
+        });
+    </script>
+</body>
+</html>
+

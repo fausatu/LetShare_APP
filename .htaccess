@@ -1,0 +1,127 @@
+# ============================================
+# LetShare Production Configuration
+# ============================================
+
+# ============================================
+# SECURITY HEADERS
+# ============================================
+<IfModule mod_headers.c>
+    # Prevent clickjacking
+    Header always set X-Frame-Options "SAMEORIGIN"
+    
+    # XSS Protection
+    Header always set X-XSS-Protection "1; mode=block"
+    
+    # Prevent MIME type sniffing
+    Header always set X-Content-Type-Options "nosniff"
+    
+    # Referrer Policy
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    
+    # Remove server signature
+    Header always unset X-Powered-By
+    Header unset X-Powered-By
+    
+    # Only add ngrok header in development (check environment variable)
+    # In production, this should not be set
+    # Header always set ngrok-skip-browser-warning "true"
+</IfModule>
+
+# ============================================
+# CACHE CONTROL (Production)
+# ============================================
+<IfModule mod_expires.c>
+    ExpiresActive On
+    
+    # Images
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType image/x-icon "access plus 1 year"
+    
+    # CSS and JavaScript
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType text/javascript "access plus 1 month"
+    
+    # Fonts
+    ExpiresByType font/woff "access plus 1 year"
+    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType application/font-woff "access plus 1 year"
+    ExpiresByType application/font-woff2 "access plus 1 year"
+    
+    # HTML (don't cache)
+    ExpiresByType text/html "access plus 0 seconds"
+    
+    # JSON API (don't cache)
+    ExpiresByType application/json "access plus 0 seconds"
+</IfModule>
+
+# Alternative Cache-Control headers (if mod_expires not available)
+<IfModule mod_headers.c>
+    # Images cache for 1 year
+    <FilesMatch "\.(jpg|jpeg|png|gif|webp|svg|ico)$">
+        Header set Cache-Control "max-age=31536000, public"
+    </FilesMatch>
+    
+    # CSS/JS cache for 1 month
+    <FilesMatch "\.(css|js)$">
+        Header set Cache-Control "max-age=2592000, public"
+    </FilesMatch>
+    
+    # HTML/JSON no cache
+    <FilesMatch "\.(html|json)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </FilesMatch>
+</IfModule>
+
+# ============================================
+# COMPRESSION (GZIP)
+# ============================================
+<IfModule mod_deflate.c>
+    # Compress HTML, CSS, JavaScript, Text, XML and fonts
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/json
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/javascript
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# ============================================
+# FILE ACCESS SECURITY
+# ============================================
+# Deny access to sensitive files
+<FilesMatch "^(\.env|\.git|composer\.(json|lock)|package(-lock)?\.json|\.htaccess)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Protect .env file
+<Files ".env">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# ============================================
+# HTTPS REDIRECT (Uncomment in production with SSL)
+# ============================================
+# <IfModule mod_rewrite.c>
+#     RewriteEngine On
+#     RewriteCond %{HTTPS} off
+#     RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# </IfModule>
+
+# ============================================
+# ERROR PAGES (Optional)
+# ============================================
+# ErrorDocument 404 /404.html
+# ErrorDocument 500 /500.html
+

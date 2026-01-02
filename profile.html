@@ -1,0 +1,153 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>My Profile - LetShare</title>
+    <link rel="stylesheet" href="css/profile.css">
+</head>
+<body>
+    <div class="bg-blob blob-1"></div>
+    <div class="bg-blob blob-2"></div>
+
+    <div class="container">
+        <header>
+            <a href="Test.html" style="text-decoration: none; color: inherit;">
+                <div class="logo">
+                    <!-- <div class="logo-icon">
+                        <div class="logo-glow"></div>
+                        <div class="logo-box">
+                            <img src="Letshare_Icon.png" alt="LetShare Logo" style="width: 130px; height: 100px; display: block;">
+                        </div>
+                    </div> -->
+                    <div class="logo-text">
+                        <h1>LetShare</h1>
+                        <p>Give, Swap, Grow</p>
+                    </div>
+                </div>
+            </a>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <a href="settings.html" class="btn-back" style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2);">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"></path>
+                    </svg>
+                    Settings
+                </a>
+                <a href="Test.html" class="btn-back">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"></path>
+                    </svg>
+                    Back
+                </a>
+            </div>
+        </header>
+
+        <div class="profile-header">
+            <div class="profile-avatar">FA</div>
+            <div class="university-logo-container" id="universityLogoContainer" style="display: none;">
+                <img id="universityLogo" src="" alt="University Logo" style="max-width: 80px; max-height: 40px; object-fit: contain; margin-top: 10px;">
+            </div>
+            <h2 class="profile-name">Fausat Akintoyesé</h2>
+            <p class="profile-major">Finance Major</p>
+            <div class="profile-rating">
+                <div class="stars" id="profileStars">
+                    <!-- Stars will be generated dynamically -->
+                </div>
+                <span class="rating-value" id="profileRating">4.9</span>
+                <span class="reviews-count" id="profileReviews">(32 reviews)</span>
+            </div>
+            <div class="profile-stats">
+                <div class="stat-box">
+                    <div class="stat-value" id="postedCount">0</div>
+                    <div class="stat-label">Items Posted</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="interestedCount">0</div>
+                    <div class="stat-label">Items Interested</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="exchangesDoneCount">0</div>
+                    <div class="stat-label">Exchanges Done</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('posted', this)">My Posts</button>
+            <button class="tab" onclick="switchTab('interested', this)">Interested</button>
+            <button class="tab" onclick="switchTab('messages', this)">Requests</button>
+            <button class="tab" onclick="switchTab('history', this)">History</button>
+        </div>
+
+        <div class="tabs-container">
+        <div id="posted" class="content-section active">
+            <div class="items-grid" id="postedItems">
+                <!-- Items will be loaded dynamically -->
+            </div>
+        </div>
+
+        <div id="interested" class="content-section">
+            <div class="items-grid" id="interestedItems">
+                <!-- Items will be loaded from localStorage -->
+            </div>
+        </div>
+
+        <div id="messages" class="content-section">
+            <div class="items-grid" id="messagesList">
+                <!-- Messages will be loaded dynamically -->
+            </div>
+        </div>
+
+        <div id="history" class="content-section">
+            <div class="items-grid" id="historyList">
+                <!-- History will be loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Review Modal -->
+    <div class="review-modal" id="reviewModal">
+        <div class="review-modal-content">
+            <button class="modal-close" onclick="closeReviewModal()">✕</button>
+            <h2>Leave a Review</h2>
+            <p style="color: #9ca3af; margin-bottom: 1.5rem;">Share your experience with this exchange</p>
+            
+            <div class="review-rating-section">
+                <label style="display: block; margin-bottom: 0.75rem; color: white; font-weight: 500;">Rating</label>
+                <div class="star-rating" id="starRating">
+                    <span class="star" data-rating="1">★</span>
+                    <span class="star" data-rating="2">★</span>
+                    <span class="star" data-rating="3">★</span>
+                    <span class="star" data-rating="4">★</span>
+                    <span class="star" data-rating="5">★</span>
+                </div>
+                <p id="ratingText" style="color: #9ca3af; margin-top: 0.5rem; font-size: 0.875rem;">Select a rating</p>
+            </div>
+            
+            <div class="review-text-section" style="margin-top: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.75rem; color: white; font-weight: 500;">Your Review (Optional)</label>
+                <textarea id="reviewText" placeholder="Share your thoughts about this exchange..." style="width: 100%; min-height: 120px; padding: 0.75rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0.75rem; color: white; font-family: inherit; font-size: 0.875rem; resize: vertical;"></textarea>
+            </div>
+            
+            <div class="review-buttons" style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: flex-end;">
+                <button class="btn-cancel" onclick="closeReviewModal()" style="padding: 0.75rem 1.5rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 0.75rem; color: white; cursor: pointer; transition: all 0.3s;">Cancel</button>
+                <button class="btn-submit-review" onclick="submitReview()" style="padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #3b82f6, #f97316); border: none; border-radius: 0.75rem; color: white; cursor: pointer; font-weight: 600; transition: all 0.3s;">Submit Review</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <span class="toast-icon">✅</span>
+        <span id="toastMessage">Item deleted successfully!</span>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/profile.js"></script>
+</body>
+</html>

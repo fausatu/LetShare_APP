@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion par Email - LetShare</title>
+    <link rel="stylesheet" href="css/email_login.css">
+</head>
+<body>
+    <div class="auth-container">
+        <!-- Left side - Illustration -->
+        <div class="auth-illustration">
+            <div class="illustration-content">
+                <div class="illustration-icon">
+                    <img src="Letshare_Icon.png" alt="LetShare" onerror="this.style.display='none'">
+                </div>
+                <h2 data-i18n="emailLoginIllustrationTitle">Connexion rapide</h2>
+                <p data-i18n="emailLoginIllustrationText">Recevez un code par email et connectez-vous sans mot de passe</p>
+            </div>
+        </div>
+        
+        <!-- Right side - Form -->
+        <div class="auth-form-section">
+            <div class="auth-form-box" style="position: relative;">
+                <!-- Language Selector -->
+                <div style="position: absolute; top: 20px; right: 20px; z-index: 10;">
+                    <select id="languageSelector" style="padding: 0.5rem 1rem; border: 2px solid #e5e7eb; border-radius: 0.5rem; background: white; color: #1f2937; font-size: 0.875rem; cursor: pointer; outline: none;" onchange="changeLanguage(this.value)">
+                        <option value="fr">Français</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+                
+                <div class="auth-form-header">
+                    <h1 data-i18n="emailLoginTitle">Connexion par Email</h1>
+                    <p data-i18n="emailLoginSubtitle">Entrez votre email universitaire</p>
+                </div>
+                
+                <div class="step-indicator">
+                    <div class="step" id="step1"></div>
+                    <div class="step" id="step2"></div>
+                    <div class="step" id="step3"></div>
+                </div>
+                
+                <div class="error-message" id="errorMessage"></div>
+                <div class="success-message" id="successMessage"></div>
+                
+                <!-- Step 1: Email Input -->
+                <div id="emailStep">
+                    <form id="emailForm">
+                        <div class="form-group">
+                            <label class="form-label" for="email" data-i18n="universityEmailLabel">Email universitaire</label>
+                            <input type="email" class="form-input" id="email" data-i18n-placeholder="universityEmailPlaceholder" placeholder="votre.email@student.clermont-sb.fr" required>
+                        </div>
+                        
+                        <button type="submit" class="btn-primary" id="sendCodeBtn" data-i18n="sendCodeButton">Envoyer le code</button>
+                    </form>
+                </div>
+                
+                <!-- Step 2: Code Input -->
+                <div id="codeStep" style="display: none;">
+                    <form id="codeForm">
+                        <div class="form-group">
+                            <label class="form-label" for="code" data-i18n="verificationCodeLabel">Code de vérification</label>
+                            <div class="code-input-group">
+                                <input type="text" class="code-input" id="code" placeholder="000000" maxlength="6" required pattern="[0-9]{6}">
+                            </div>
+                            <p class="countdown" id="countdown"></p>
+                        </div>
+                        
+                        <button type="submit" class="btn-primary" id="verifyCodeBtn" data-i18n="verifyCodeButton">Vérifier le code</button>
+                        <button type="button" class="btn-link" id="resendCodeBtn" style="width: 100%; margin-top: 10px;" data-i18n="resendCodeButton">Renvoyer le code</button>
+                    </form>
+                </div>
+                
+                <!-- Step 3: Complete Registration (Name and Department) -->
+                <div id="completeStep" style="display: none;">
+                    <form id="completeForm">
+                        <div class="form-group">
+                            <label class="form-label" for="name" data-i18n="fullNameLabel">Nom complet</label>
+                            <input type="text" class="form-input" id="name" data-i18n-placeholder="fullNamePlaceholder" placeholder="Entrez votre nom complet" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="department" data-i18n="departmentLabel">Département / Filière</label>
+                            <input type="text" class="form-input" id="department" data-i18n-placeholder="departmentPlaceholder" placeholder="ex: Finance, Marketing, Management..." required list="departmentSuggestions" autocomplete="off">
+                            <datalist id="departmentSuggestions"></datalist>
+                            <small style="color: #6b7280; font-size: 0.75rem; margin-top: 0.25rem; display: block;" data-i18n="startTypingSuggestions">Commencez à taper pour voir les suggestions</small>
+                        </div>
+                        
+                        <button type="submit" class="btn-primary" id="completeBtn" data-i18n="completeRegistrationButton">Finaliser l'inscription</button>
+                    </form>
+                </div>
+                
+                <div class="back-link">
+                    <a href="login.html" data-i18n="backToLogin">← Retour à la connexion</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/api.js"></script>
+    <script>
+        // Translations
+        const translations = {
+            en: {
+                emailLoginTitle: "Login with Email",
+                emailLoginSubtitle: "Enter your university email",
+                emailLoginIllustrationTitle: "Quick Login",
+                emailLoginIllustrationText: "Receive a code by email and log in without a password",
+                universityEmailLabel: "University Email",
+                universityEmailPlaceholder: "your.email@student.university.edu",
+                sendCodeButton: "Send Code",
+                sendingCode: "Sending...",
+                codeSent: "Code sent! Check your email inbox.",
+                verificationCodeLabel: "Verification Code",
+                verifyCodeButton: "Verify Code",
+                verifying: "Verifying...",
+                resendCodeButton: "Resend Code",
+                resending: "Sending...",
+                codeExpired: "Code expired. Click 'Resend Code'",
+                codeValidFor: "Code valid for",
+                codeMustBe6Digits: "Code must contain exactly 6 digits",
+                invalidCode: "Invalid code",
+                errorSendingCode: "Error sending code. Please try again.",
+                errorVerifying: "Error verifying. Please try again.",
+                fullNameLabel: "Full Name",
+                fullNamePlaceholder: "Enter your full name",
+                departmentLabel: "Department / Major",
+                departmentPlaceholder: "e.g. Finance, Marketing, Management...",
+                startTypingSuggestions: "Start typing to see suggestions",
+                completeRegistrationButton: "Complete Registration",
+                completing: "Registering...",
+                fillAllFields: "Please fill in all fields",
+                errorCompleting: "Error completing registration. Please try again.",
+                backToLogin: "← Back to login"
+            },
+            fr: {
+                emailLoginTitle: "Connexion par Email",
+                emailLoginSubtitle: "Entrez votre email universitaire",
+                emailLoginIllustrationTitle: "Connexion rapide",
+                emailLoginIllustrationText: "Recevez un code par email et connectez-vous sans mot de passe",
+                universityEmailLabel: "Email universitaire",
+                universityEmailPlaceholder: "votre.email@student.clermont-sb.fr",
+                sendCodeButton: "Envoyer le code",
+                sendingCode: "Envoi en cours...",
+                codeSent: "Code envoyé ! Vérifiez votre boîte email.",
+                verificationCodeLabel: "Code de vérification",
+                verifyCodeButton: "Vérifier le code",
+                verifying: "Vérification...",
+                resendCodeButton: "Renvoyer le code",
+                resending: "Envoi...",
+                codeExpired: "Code expiré. Cliquez sur 'Renvoyer le code'",
+                codeValidFor: "Code valide pendant",
+                codeMustBe6Digits: "Le code doit contenir exactement 6 chiffres",
+                invalidCode: "Code invalide",
+                errorSendingCode: "Erreur lors de l'envoi du code. Veuillez réessayer.",
+                errorVerifying: "Erreur lors de la vérification. Veuillez réessayer.",
+                fullNameLabel: "Nom complet",
+                fullNamePlaceholder: "Entrez votre nom complet",
+                departmentLabel: "Département / Filière",
+                departmentPlaceholder: "ex: Finance, Marketing, Management...",
+                startTypingSuggestions: "Commencez à taper pour voir les suggestions",
+                completeRegistrationButton: "Finaliser l'inscription",
+                completing: "Inscription...",
+                fillAllFields: "Veuillez remplir tous les champs",
+                errorCompleting: "Erreur lors de l'inscription. Veuillez réessayer.",
+                backToLogin: "← Retour à la connexion"
+            }
+        };
+        
+        // Get current language
+        function getCurrentLanguage() {
+            const settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+            return settings.language || 'fr';
+        }
+        
+        // Get translation
+        function t(key) {
+            const lang = getCurrentLanguage();
+            return translations[lang] && translations[lang][key] ? translations[lang][key] : (translations.en[key] || key);
+        }
+        
+        // Apply translations
+        function applyTranslations() {
+            const lang = getCurrentLanguage();
+            document.documentElement.lang = lang;
+            document.getElementById('languageSelector').value = lang;
+            
+            // Translate elements with data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(function(el) {
+                const key = el.getAttribute('data-i18n');
+                const translation = t(key);
+                if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                    // Don't change input values, only placeholders
+                } else if (el.tagName === 'BUTTON' || el.tagName === 'A') {
+                    el.textContent = translation;
+                } else if (el.tagName === 'SMALL') {
+                    el.textContent = translation;
+                } else {
+                    el.textContent = translation;
+                }
+            });
+            
+            // Translate placeholders
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
+                const key = el.getAttribute('data-i18n-placeholder');
+                el.placeholder = t(key);
+            });
+        }
+        
+        // Change language
+        function changeLanguage(lang) {
+            const settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+            settings.language = lang;
+            localStorage.setItem('userSettings', JSON.stringify(settings));
+            applyTranslations();
+        }
+        
+        // Initialize translations on page load
+        applyTranslations();
+        
+        let countdownInterval;
+        let emailValue = '';
+        
+        // Email form submission
+        document.getElementById('emailForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            emailValue = document.getElementById('email').value.trim();
+            const sendCodeBtn = document.getElementById('sendCodeBtn');
+            const errorMessage = document.getElementById('errorMessage');
+            const successMessage = document.getElementById('successMessage');
+            
+            // Hide messages
+            errorMessage.classList.remove('show');
+            successMessage.classList.remove('show');
+            
+            // Disable button
+            sendCodeBtn.disabled = true;
+            sendCodeBtn.textContent = t('sendingCode');
+            
+            try {
+                const response = await fetch('api/auth/send_email_code.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ email: emailValue })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Show success message briefly, then hide it when switching steps
+                    successMessage.textContent = t('codeSent');
+                    successMessage.classList.add('show');
+                    
+                    // Switch to code step
+                    setTimeout(() => {
+                        successMessage.classList.remove('show');
+                        document.getElementById('emailStep').style.display = 'none';
+                        document.getElementById('codeStep').style.display = 'block';
+                        document.getElementById('step1').classList.remove('active');
+                        document.getElementById('step2').classList.add('active');
+                        
+                        // Focus on code input
+                        document.getElementById('code').focus();
+                        
+                        // Start countdown
+                        startCountdown(600); // 10 minutes
+                    }, 1000);
+                } else {
+                    throw new Error(data.message || t('errorSendingCode'));
+                }
+            } catch (error) {
+                errorMessage.textContent = error.message || t('errorSendingCode');
+                errorMessage.classList.add('show');
+            } finally {
+                sendCodeBtn.disabled = false;
+                sendCodeBtn.textContent = t('sendCodeButton');
+            }
+        });
+        
+        // Code form submission
+        document.getElementById('codeForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            let code = document.getElementById('code').value.trim();
+            const verifyCodeBtn = document.getElementById('verifyCodeBtn');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            // Hide messages
+            errorMessage.classList.remove('show');
+            
+            // Clean code: remove all non-digit characters
+            code = code.replace(/\D/g, '');
+            
+            // Update input field with cleaned code
+            document.getElementById('code').value = code;
+            
+            // Validate code format
+            if (!/^\d{6}$/.test(code)) {
+                errorMessage.textContent = t('codeMustBe6Digits');
+                errorMessage.classList.add('show');
+                return;
+            }
+            
+            // Hide success message if still visible
+            const successMessage = document.getElementById('successMessage');
+            successMessage.classList.remove('show');
+            
+            // Disable button
+            verifyCodeBtn.disabled = true;
+            verifyCodeBtn.textContent = t('verifying');
+            
+            try {
+                const response = await fetch('api/auth/verify_email_code.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ email: emailValue, code: code })
+                });
+                
+                let data;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    throw new Error('Réponse invalide du serveur. Vérifiez les logs PHP.');
+                }
+                
+                if (data.success) {
+                    // Check if this is a new user who needs to complete registration
+                    if (data.data && data.data.is_new_user) {
+                        // New user - show completion step
+                        document.getElementById('codeStep').style.display = 'none';
+                        document.getElementById('completeStep').style.display = 'block';
+                        document.getElementById('step2').classList.remove('active');
+                        document.getElementById('step3').classList.add('active');
+                        
+                        // Pre-fill name from email if possible
+                        const emailParts = emailValue.split('@')[0];
+                        const suggestedName = emailParts.replace(/[._-]/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+                        document.getElementById('name').value = suggestedName;
+                        
+                        // Load departments for autocomplete
+                        loadDepartments();
+                    } else {
+                        // Existing user - log in directly
+                        if (data.data && data.data.user) {
+                            localStorage.setItem('currentUser', JSON.stringify(data.data.user));
+                            localStorage.setItem('authToken', data.data.token);
+                        }
+                        
+                        // Redirect to main page
+                        window.location.href = 'Test.html';
+                    }
+                } else {
+                    // Show the actual error message from server
+                    errorMessage.textContent = data.message || t('invalidCode');
+                    errorMessage.classList.add('show');
+                    document.getElementById('code').value = '';
+                    document.getElementById('code').focus();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                errorMessage.textContent = error.message || t('errorVerifying');
+                errorMessage.classList.add('show');
+                document.getElementById('code').value = '';
+                document.getElementById('code').focus();
+            } finally {
+                verifyCodeBtn.disabled = false;
+                verifyCodeBtn.textContent = t('verifyCodeButton');
+            }
+        });
+        
+        // Resend code
+        document.getElementById('resendCodeBtn').addEventListener('click', async function() {
+            const resendBtn = this;
+            const errorMessage = document.getElementById('errorMessage');
+            
+            errorMessage.classList.remove('show');
+            resendBtn.disabled = true;
+            resendBtn.textContent = t('resending');
+            
+            try {
+                const response = await fetch('api/auth/send_email_code.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ email: emailValue })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Reset countdown
+                    clearInterval(countdownInterval);
+                    startCountdown(600);
+                    
+                    // Clear code input
+                    document.getElementById('code').value = '';
+                    document.getElementById('code').focus();
+                } else {
+                    throw new Error(data.message || t('errorSendingCode'));
+                }
+            } catch (error) {
+                errorMessage.textContent = error.message || t('errorSendingCode');
+                errorMessage.classList.add('show');
+            } finally {
+                resendBtn.disabled = false;
+                resendBtn.textContent = t('resendCodeButton');
+            }
+        });
+        
+        // Auto-format code input (only numbers)
+        document.getElementById('code').addEventListener('input', function(e) {
+            this.value = this.value.replace(/\D/g, '');
+        });
+        
+        // Start countdown timer
+        function startCountdown(seconds) {
+            const countdownEl = document.getElementById('countdown');
+            let remaining = seconds;
+            
+            function updateCountdown() {
+                const minutes = Math.floor(remaining / 60);
+                const secs = remaining % 60;
+                countdownEl.textContent = `${t('codeValidFor')} ${minutes}:${secs.toString().padStart(2, '0')}`;
+                
+                if (remaining <= 0) {
+                    clearInterval(countdownInterval);
+                    countdownEl.textContent = t('codeExpired');
+                    countdownEl.style.color = '#dc2626';
+                } else {
+                    remaining--;
+                }
+            }
+            
+            updateCountdown();
+            countdownInterval = setInterval(updateCountdown, 1000);
+        }
+        
+        // Load departments for autocomplete
+        async function loadDepartments() {
+            try {
+                const response = await fetch('api/departments.php');
+                const data = await response.json();
+                if (data.success && data.data) {
+                    const datalist = document.getElementById('departmentSuggestions');
+                    datalist.innerHTML = '';
+                    data.data.forEach(dept => {
+                        const option = document.createElement('option');
+                        option.value = dept;
+                        datalist.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading departments:', error);
+            }
+        }
+        
+        // Complete registration form submission
+        document.getElementById('completeForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('name').value.trim();
+            const department = document.getElementById('department').value.trim();
+            const completeBtn = document.getElementById('completeBtn');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            // Validation
+            if (!name || !department) {
+                errorMessage.textContent = t('fillAllFields');
+                errorMessage.classList.add('show');
+                return;
+            }
+            
+            // Hide messages
+            errorMessage.classList.remove('show');
+            
+            // Disable button
+            completeBtn.disabled = true;
+            completeBtn.textContent = t('completing');
+            
+            try {
+                const response = await fetch('api/auth/complete_email_registration.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ 
+                        email: emailValue, 
+                        name: name, 
+                        department: department 
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Store user data
+                    if (data.data && data.data.user) {
+                        localStorage.setItem('currentUser', JSON.stringify(data.data.user));
+                        localStorage.setItem('authToken', data.data.token);
+                    }
+                    
+                    // Redirect to main page
+                    window.location.href = 'Test.html';
+                } else {
+                    throw new Error(data.message || t('errorCompleting'));
+                }
+            } catch (error) {
+                errorMessage.textContent = error.message || t('errorCompleting');
+                errorMessage.classList.add('show');
+            } finally {
+                completeBtn.disabled = false;
+                completeBtn.textContent = t('completeRegistrationButton');
+            }
+        });
+        
+        // Check for error messages from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('error')) {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = decodeURIComponent(urlParams.get('error'));
+            errorMessage.classList.add('show');
+        }
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,32 @@
+# Disable error display (to prevent output before JSON)
+php_flag display_errors Off
+php_flag display_startup_errors Off
+php_value error_reporting E_ALL
+php_flag log_errors On
+
+# Enable CORS headers
+# Note: PHP handles CORS headers dynamically in config.php
+# We only set headers here if PHP doesn't set them
+# The "always" directive ensures headers are set even on error responses
+<IfModule mod_headers.c>
+    # Set default CORS headers (PHP will override with specific origin if needed)
+    # Use "always" to ensure headers are sent even on error responses
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+    Header always set Access-Control-Max-Age "86400"
+    # Let PHP handle Access-Control-Allow-Origin dynamically
+</IfModule>
+
+# Handle CORS preflight requests (OPTIONS)
+# Note: This might interfere with PHP handling, so we let PHP handle it
+# <IfModule mod_rewrite.c>
+#     RewriteEngine On
+#     RewriteCond %{REQUEST_METHOD} OPTIONS
+#     RewriteRule ^(.*)$ $1 [R=200,L]
+# </IfModule>
+
+# Security: Deny access to config file
+<Files "config.php">
+    Order allow,deny
+    Deny from all
+</Files>

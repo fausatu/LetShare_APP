@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Journey Map - Camille</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #1f2937;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+        
+        .subtitle {
+            color: #6b7280;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            font-size: 0.9rem;
+        }
+        
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 10px;
+            text-align: left;
+            font-weight: 600;
+            border: 1px solid #ddd;
+            vertical-align: top;
+            min-width: 150px;
+        }
+        
+        th:first-child {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            min-width: 180px;
+            font-weight: 700;
+        }
+        
+        td {
+            padding: 12px 10px;
+            border: 1px solid #e5e7eb;
+            vertical-align: top;
+            background: #fafafa;
+        }
+        
+        td:first-child {
+            background: #f3f4f6;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .story {
+            font-style: italic;
+            color: #4b5563;
+        }
+        
+        .actions {
+            color: #059669;
+        }
+        
+        .actions ul {
+            margin-left: 15px;
+            margin-top: 5px;
+        }
+        
+        .actions li {
+            margin-bottom: 3px;
+        }
+        
+        .touchpoints {
+            color: #0369a1;
+        }
+        
+        .touchpoints ul {
+            margin-left: 15px;
+            margin-top: 5px;
+        }
+        
+        .touchpoints li {
+            margin-bottom: 3px;
+        }
+        
+        .emotions {
+            font-size: 1.5rem;
+            text-align: center;
+        }
+        
+        .pain-points {
+            color: #dc2626;
+        }
+        
+        .pain-points ul {
+            margin-left: 15px;
+            margin-top: 5px;
+        }
+        
+        .pain-points li {
+            margin-bottom: 3px;
+        }
+        
+        .backstage {
+            color: #7c3aed;
+            font-style: italic;
+        }
+        
+        .backstage ul {
+            margin-left: 15px;
+            margin-top: 5px;
+        }
+        
+        .opportunities {
+            color: #059669;
+        }
+        
+        .opportunities ul {
+            margin-left: 15px;
+            margin-top: 5px;
+        }
+        
+        .opportunities li {
+            margin-bottom: 3px;
+        }
+        
+        .section-title {
+            background: #1f2937;
+            color: white;
+            padding: 15px;
+            margin: 40px 0 20px 0;
+            font-size: 1.3rem;
+            border-radius: 5px;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .container {
+                box-shadow: none;
+                padding: 20px;
+            }
+            
+            @page {
+                size: A3 landscape;
+                margin: 1cm;
+            }
+        }
+        
+        .note {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        
+        .context {
+            background: #f0f9ff;
+            border-left: 4px solid #0284c7;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 4px;
+        }
+        
+        .context h2 {
+            color: #0284c7;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        
+        .context ul {
+            margin-left: 20px;
+            color: #1e40af;
+        }
+        
+        .context li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>User Journey Map</h1>
+        <p class="subtitle">Camille is looking for items at the start of the year</p>
+        
+        <div class="context">
+            <h2>Context</h2>
+            <ul>
+                <li><strong>Platform:</strong> LetShare - Web application for exchange and donation</li>
+                <li><strong>User:</strong> Camille, a student looking for items at the start of the year</li>
+                <li><strong>Goal:</strong> Find items (books, materials, notes) posted in January</li>
+                <li><strong>Scenario:</strong> Beginning of semester, need for course materials</li>
+                <li><strong>Platform type:</strong> Web app only (no mobile app)</li>
+                <li><strong>Item types:</strong> Exchange and Donation</li>
+            </ul>
+        </div>
+        
+        <div class="note">
+            <strong>Note:</strong> To save as PDF, use your browser's print function (Ctrl+P or Cmd+P) and select "Save as PDF" as the destination.
+        </div>
+        
+        <div class="section-title">Phase 1: Discovery & Search</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Journey Steps</th>
+                    <th>Awareness of need</th>
+                    <th>Discovery of LetShare</th>
+                    <th>Searching for specific items</th>
+                    <th>Evaluating an interesting item</th>
+                    <th>Marking interest</th>
+                    <th>First contact</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Story</strong></td>
+                    <td class="story">Camille is looking for items at the start of the year</td>
+                    <td class="story">Someone mentions the app or she discovers it</td>
+                    <td class="story">She searches for items from January</td>
+                    <td class="story">She finds an item that interests her</td>
+                    <td class="story">She decides to contact the donor/exchanger</td>
+                    <td class="story">She sends a message</td>
+                </tr>
+                <tr>
+                    <td><strong>Actions</strong></td>
+                    <td class="actions">
+                        <ul>
+                            <li>Thinks about what she needs</li>
+                            <li>Does research</li>
+                            <li>Looks for options</li>
+                        </ul>
+                    </td>
+                    <td class="actions">
+                        <ul>
+                            <li>Explores the webpage</li>
+                        </ul>
+                    </td>
+                    <td class="actions">
+                        <ul>
+                            <li>Uses the search bar</li>
+                            <li>Applies "Start of year" filter</li>
+                            <li>Browses results</li>
+                        </ul>
+                    </td>
+                    <td class="actions">
+                        <ul>
+                            <li>Clicks "View Details"</li>
+                            <li>Reads the description</li>
+                            <li>Views the photos</li>
+                            <li>Checks publication date</li>
+                        </ul>
+                    </td>
+                    <td class="actions">
+                        <ul>
+                            <li>Clicks the "I'm interested" button</li>
+                            <li>Checks her interest list</li>
+                        </ul>
+                    </td>
+                    <td class="actions">
+                        <ul>
+                            <li>Opens conversation</li>
+                            <li>Writes a message</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Touchpoints</strong></td>
+                    <td class="touchpoints">
+                        <ul>
+                            <li>University website</li>
+                            <li>LetShare flyer</li>
+                            <li>Google search</li>
+                        </ul>
+                    </td>
+                    <td class="touchpoints">
+                        <ul>
+                            <li>LetShare homepage</li>
+                        </ul>
+                    </td>
+                    <td class="touchpoints">
+                        <ul>
+                            <li>Search bar</li>
+                            <li>Filters panel</li>
+                            <li>Results grid</li>
+                        </ul>
+                    </td>
+                    <td class="touchpoints">
+                        <ul>
+                            <li>Details modal</li>
+                            <li>Item image</li>
+                            <li>Related items</li>
+                        </ul>
+                    </td>
+                    <td class="touchpoints">
+                        <ul>
+                            <li>"I'm interested" button</li>
+                            <li>"My interests" page/list</li>
+                        </ul>
+                    </td>
+                    <td class="touchpoints">
+                        <ul>
+                            <li>Conversation modal</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Emotions</strong></td>
+                    <td class="emotions">😐</td>
+                    <td class="emotions">🤔</td>
+                    <td class="emotions">😊</td>
+                    <td class="emotions">😌</td>
+                    <td class="emotions">😌</td>
+                    <td class="emotions">😮</td>
+                </tr>
+                <tr>
+                    <td><strong>Pain Points</strong></td>
+                    <td class="pain-points">
+                        <ul>
+                            <li>Uncertainty about what to look for</li>
+                            <li>Lack of information</li>
+                        </ul>
+                    </td>
+                    <td class="pain-points">
+                        <ul>
+                            <li>Uncertainty about the platform</li>
+                        </ul>
+                    </td>
+                    <td class="pain-points">
+                        <ul>
+                            <li>Search is not specific enough</li>
+                            <li>No date filter visible</li>
+                            <li>No way to save searches</li>
+                        </ul>
+                    </td>
+                    <td class="pain-points">
+                        <ul>
+                            <li>Limited photos</li>
+                            <li>Uncertainty about item availability</li>
+                            <li>Can't see the item's condition clearly</li>
+                        </ul>
+                    </td>
+                    <td class="pain-points">
+                        <ul>
+                            <li>Difficult to track multiple interests</li>
+                        </ul>
+                    </td>
+                    <td class="pain-points">
+                        <ul>
+                            <li>Uncertainty about donor/exchanger's response time</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Backstage</strong></td>
+                    <td class="backstage">-</td>
+                    <td class="backstage">-</td>
+                    <td class="backstage">-</td>
+                    <td class="backstage">-</td>
+                    <td class="backstage">-</td>
+                    <td class="backstage">-</td>
+                </tr>
+                <tr>
+                    <td><strong>Opportunities</strong></td>
+                    <td class="opportunities">-</td>
+                    <td class="opportunities">
+                        <ul>
+                            <li>Provide more information</li>
+                        </ul>
+                    </td>
+                    <td class="opportunities">
+                        <ul>
+                            <li>Add "Start of year" filter</li>
+                        </ul>
+                    </td>
+                    <td class="opportunities">
+                        <ul>
+                            <li>Multiple photos of the item</li>
+                        </ul>
+                    </td>
+                    <td class="opportunities">-</td>
+                    <td class="opportunities">-</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="section-title">Phase 2: Exchange/Donation & Completion</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Journey Steps</th>
+                    <th>Response & negotiation</th>
+                    <th>Exchange confirmation</th>
+                    <th>Item reception</th>
+                    <th>Feedback & rating</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Story</strong></td>
+                    <td class="story">The donor/exchanger responds and they negotiate</td>
+                    <td class="story">They confirm the exchange/donation</td>
+                    <td class="story">Camille receives the item</td>
+                    <td class="story">She gives feedback</td>
+                </tr>
+                <tr>
+                    <td><strong>Actions</strong></td>
+                    <td class="actions">
+                        <ul>
+                            <li>Receives notification</li>
+                            <li>Reads the response</li>
+                            <li>Proposes meeting location/date</li>
+                            <li>Finalizes details</li>
+                        </ul>
+                    </td>
+                    <td class="actions">
+                        <ul>
+                            <li>Accepts the request</li>
+                            <li>Confirms location and time</li>
+                            <li>Prepares for exchange/donation</li>
+                        </ul>
+                    </td>
+                    <td class="actions">
+                        <ul>
+                            <li>Goes to meeting point</li>
+                            <li>Receives the item</li>
+                            <li>Checks item condition</li>
+                        </ul>
+                    </td>
+                    <td class="actions">
+                        <ul>
+                            <li>Clicks "Confirm receipt"</li>
+                            <li>Gives a rating</li>
+                            <li>Writes a comment</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Touchpoints</strong></td>
+                    <td class="touchpoints">
+                        <ul>
+                            <li>Notifications</li>
+                            <li>Messages</li>
+                            <li>Real-time chat</li>
+                        </ul>
+                    </td>
+                    <td class="touchpoints">
+                        <ul>
+                            <li>Confirmation page</li>
+                            <li>Exchange/donation details</li>
+                            <li>Map (if applicable)</li>
+                        </ul>
+                    </td>
+                    <td class="touchpoints">
+                        <ul>
+                            <li>Meeting point</li>
+                            <li>Physical item</li>
+                            <li>Web app</li>
+                        </ul>
+                    </td>
+                    <td class="touchpoints">
+                        <ul>
+                            <li>Rating modal</li>
+                            <li>Rating system</li>
+                            <li>Comments section</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Emotions</strong></td>
+                    <td class="emotions">😊</td>
+                    <td class="emotions">😄</td>
+                    <td class="emotions">😌</td>
+                    <td class="emotions">😊</td>
+                </tr>
+                <tr>
+                    <td><strong>Pain Points</strong></td>
+                    <td class="pain-points">
+                        <ul>
+                            <li>Long response delays</li>
+                            <li>Difficulty coordinating</li>
+                            <li>Communication issues</li>
+                        </ul>
+                    </td>
+                    <td class="pain-points">
+                        <ul>
+                            <li>Risk of cancellation</li>
+                            <li>Uncertainty about exchange vs donation</li>
+                            <li>Lack of schedule flexibility</li>
+                        </ul>
+                    </td>
+                    <td class="pain-points">
+                        <ul>
+                            <li>Item doesn't match description</li>
+                            <li>Quality issues</li>
+                            <li>Meeting delay</li>
+                        </ul>
+                    </td>
+                    <td class="pain-points">
+                        <ul>
+                            <li>Unclear rating process</li>
+                            <li>Forgetting to leave feedback</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Backstage</strong></td>
+                    <td class="backstage">
+                        <ul>
+                            <li>Notification system</li>
+                            <li>Message database</li>
+                        </ul>
+                    </td>
+                    <td class="backstage">
+                        <ul>
+                            <li>Exchange tracking system</li>
+                            <li>Status management</li>
+                        </ul>
+                    </td>
+                    <td class="backstage">-</td>
+                    <td class="backstage">
+                        <ul>
+                            <li>Rating system</li>
+                            <li>Review moderation</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Opportunities</strong></td>
+                    <td class="opportunities">
+                        <ul>
+                            <li>Push notifications</li>
+                        </ul>
+                    </td>
+                    <td class="opportunities">-</td>
+                    <td class="opportunities">-</td>
+                    <td class="opportunities">-</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
