@@ -77,10 +77,33 @@
                 var user = userResponse.data.user;
                 var settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
                 
+                // Sync language from API to localStorage
+                if (user.language) {
+                    settings.language = user.language;
+                    localStorage.setItem('userSettings', JSON.stringify(settings));
+                }
+                
+                // Apply translations immediately after syncing language
+                if (typeof applyTranslations === 'function') {
+                    applyTranslations();
+                } else {
+                    console.error('applyTranslations function not found');
+                }
+                
                 // Load profile from API
                 if (user.name) document.getElementById('fullName').value = user.name;
                 if (user.email) document.getElementById('email').value = user.email;
-                if (user.department) document.getElementById('department').value = user.department;
+                if (user.department) {
+                    // Mettre à jour le menu personnalisé
+                    const departmentElement = document.getElementById('department');
+                    if (departmentElement) {
+                        departmentElement.value = user.department;
+                        // Mettre à jour le menu personnalisé si il existe
+                        setTimeout(() => {
+                            updateCustomSelect(departmentElement, user.department);
+                        }, 100);
+                    }
+                }
                 
                 // Load privacy settings from API
                 // First, reset all toggles
@@ -103,6 +126,22 @@
                     if (allowMessagesToggle) allowMessagesToggle.classList.add('active');
                 }
                 
+                // Load conversation management settings from API
+                var autoDeleteRejectedToggle = document.getElementById('autoDeleteRejectedToggle');
+                
+                if (autoDeleteRejectedToggle) {
+                    autoDeleteRejectedToggle.classList.remove('active');
+                    
+                    // Set conversation management toggle (default to true if undefined)
+                    console.log('Auto delete rejected value:', user.auto_delete_rejected_conversations);
+                    if (user.auto_delete_rejected_conversations === true || user.auto_delete_rejected_conversations === undefined || user.auto_delete_rejected_conversations === null) {
+                        autoDeleteRejectedToggle.classList.add('active');
+                        console.log('Toggle set to active');
+                    } else {
+                        console.log('Toggle set to inactive');
+                    }
+                }
+                
                 // Load notifications (from localStorage for now, can be moved to API later)
                 var notificationSettings = settings.notifications || {};
                 ['messages', 'requests', 'accepted', 'reviews'].forEach(function(key) {
@@ -115,7 +154,15 @@
                 
                 // Load preferences from API
                 if (user.language) document.getElementById('language').value = user.language;
-                if (settings.dateFormat) document.getElementById('dateFormat').value = settings.dateFormat;
+                // dateFormat field removed from settings page
+                
+                // Force translations update after all settings are loaded
+                setTimeout(() => {
+                    if (typeof applyTranslations === 'function') {
+                        applyTranslations();
+                        console.log('Translations applied after settings load');
+                    }
+                }, 100);
                 
                 // Load avatar from API
                 var avatarPreview = document.getElementById('avatarPreview');
@@ -135,8 +182,24 @@
                 var settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
                 if (settings.fullName) document.getElementById('fullName').value = settings.fullName;
                 if (settings.email) document.getElementById('email').value = settings.email;
-                if (settings.department) document.getElementById('department').value = settings.department;
-                if (settings.language) document.getElementById('language').value = settings.language;
+                if (settings.department) {
+                    const departmentElement = document.getElementById('department');
+                    if (departmentElement) {
+                        departmentElement.value = settings.department;
+                        setTimeout(() => {
+                            updateCustomSelect(departmentElement, settings.department);
+                        }, 100);
+                    }
+                }
+                if (settings.language) {
+                    const languageElement = document.getElementById('language');
+                    if (languageElement) {
+                        languageElement.value = settings.language;
+                        setTimeout(() => {
+                            updateCustomSelect(languageElement, settings.language);
+                        }, 100);
+                    }
+                }
                 var avatarPreview = document.getElementById('avatarPreview');
                 if (avatarPreview) {
                     if (settings.avatar) {
@@ -218,7 +281,8 @@
                         }
                     }));
                     
-                    showToast('Privacy setting updated', 'success');
+                    const message = getCurrentLanguage() === 'fr' ? 'Paramètre de confidentialité mis à jour' : 'Privacy setting updated';
+                    showToast(message, 'success');
                 } else {
                     throw new Error(result.message || 'Failed to update privacy setting');
                 }
@@ -230,7 +294,8 @@
                 } else {
                     element.classList.remove('active');
                 }
-                showToast('Failed to update privacy setting. Please try again.', 'error');
+                const errorMessage = getCurrentLanguage() === 'fr' ? 'Échec de la mise à jour. Veuillez réessayer.' : 'Failed to update privacy setting. Please try again.';
+                showToast(errorMessage, 'error');
             }
         }
 
@@ -263,7 +328,7 @@
                 var updateData = {
                     name: document.getElementById('fullName').value.trim(),
                     email: document.getElementById('email').value.trim(),
-                    department: document.getElementById('department').value.trim()
+                    department: getCustomSelectValue('department')
                 };
                 
                 // Update via API
@@ -313,36 +378,10 @@
                 showToast('Error: ' + (error.message || 'Failed to update profile'), 'error');
             }
         }
-
-        // Translations
-        const translations = {
-            en: {
-                preferencesSaved: 'Preferences saved!',
-                profileUpdated: 'Profile updated successfully!',
-                avatarUpdated: 'Avatar updated!',
-                passwordChanged: 'Password changed successfully!',
-                dataExported: 'Data exported successfully!',
-                accountDeleted: 'Account deleted. Redirecting...',
-                fillAllFields: 'Please fill all fields',
-                passwordsNoMatch: 'New passwords do not match',
-                passwordTooShort: 'Password must be at least 6 characters',
-                deleteConfirm: 'Are you sure you want to delete your account? This action cannot be undone.',
-                deleteConfirm2: 'This will permanently delete all your data. Type DELETE to confirm.'
-            },
-            fr: {
-                preferencesSaved: 'Préférences enregistrées !',
-                profileUpdated: 'Profil mis à jour avec succès !',
-                avatarUpdated: 'Avatar mis à jour !',
-                passwordChanged: 'Mot de passe modifié avec succès !',
-                dataExported: 'Données exportées avec succès !',
-                accountDeleted: 'Compte supprimé. Redirection...',
-                fillAllFields: 'Veuillez remplir tous les champs',
-                passwordsNoMatch: 'Les nouveaux mots de passe ne correspondent pas',
-                passwordTooShort: 'Le mot de passe doit contenir au moins 6 caractères',
-                deleteConfirm: 'Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.',
-                deleteConfirm2: 'Cela supprimera définitivement toutes vos données. Tapez DELETE pour confirmer.'
-            }
-        };
+        //         deleteConfirm: 'Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.',
+        //         deleteConfirm2: 'Cela supprimera définitivement toutes vos données. Tapez DELETE pour confirmer.'
+        //     }
+        // };
 
         // Get current language
         function getCurrentLanguage() {
@@ -365,8 +404,17 @@
                     throw new Error('Failed to get current user');
                 }
                 var oldLanguage = currentUserResponse.data.user.language || 'en';
-                var newLanguage = document.getElementById('language').value;
-                var dateFormat = document.getElementById('dateFormat').value;
+                
+                // Get language from form - check if element exists
+                const languageElement = document.getElementById('language');
+                if (!languageElement) {
+                    throw new Error('Language select element not found');
+                }
+                var newLanguage = getCustomSelectValue('language') || languageElement.value;
+                
+                // Get dateFormat if element exists (optional)
+                const dateFormatElement = document.getElementById('dateFormat');
+                var dateFormat = dateFormatElement ? dateFormatElement.value : null;
                 
                 // Update language via API
                 if (oldLanguage !== newLanguage) {
@@ -376,20 +424,21 @@
                     }
                 }
                 
-                // Save dateFormat to localStorage (can be moved to API later)
+                // Save to localStorage first (before any toast or reload)
                 var settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
                 settings.language = newLanguage;
-                settings.dateFormat = dateFormat;
+                if (dateFormat) {
+                    settings.dateFormat = dateFormat;
+                }
                 localStorage.setItem('userSettings', JSON.stringify(settings));
                 
-                showToast(t('preferencesSaved'));
-                
-                // If language changed, reload page to apply translations
+                // If language changed, reload page immediately to apply translations
                 if (oldLanguage !== newLanguage) {
-                    setTimeout(function() {
-                        window.location.reload();
-                    }, 1000);
+                    window.location.reload();
+                    return; // Exit function, don't show toast
                 }
+                
+                showToast(t('preferencesSaved'));
             } catch (error) {
                 console.error('Error saving preferences:', error);
                 showToast('Error: ' + (error.message || 'Failed to save preferences'), 'error');
@@ -403,7 +452,8 @@
             
             // Check file size (max 2MB)
             if (file.size > 2 * 1024 * 1024) {
-                showToast('Image size must be less than 2MB', 'error');
+                const sizeMessage = getCurrentLanguage() === 'fr' ? 'La taille de l\'image doit être inférieure à 2 Mo' : 'Image size must be less than 2MB';
+                showToast(sizeMessage, 'error');
                 return;
             }
             
@@ -480,7 +530,8 @@
             try {
                 // TODO: Create password change API endpoint
                 // For now, show a message that this feature is coming soon
-                showToast('Password change feature coming soon', 'error');
+                const passwordMessage = getCurrentLanguage() === 'fr' ? 'Changement de mot de passe bientôt disponible' : 'Password change feature coming soon';
+                showToast(passwordMessage, 'error');
                 // const response = await authAPI.changePassword(current, newPass);
                 // if (response.success) {
                 //     showToast(t('passwordChanged'));
@@ -620,7 +671,7 @@
                     
                     // Redirect to home page after a delay
                     setTimeout(function() {
-                        window.location.href = 'Test.html';
+                        window.location.href = 'index.html';
                     }, 2000);
                 } else {
                     throw new Error(response.message || 'Failed to delete account');
@@ -664,30 +715,16 @@
             try {
                 var isSubscribed = await pushNotificationsManager.isSubscribed();
                 var toggle = document.getElementById('pushNotificationsToggle');
-                var testItem = document.getElementById('testPushNotificationItem');
                 
                 if (toggle) {
                     if (isSubscribed) {
                         toggle.classList.add('active');
-                        // Show test button if subscribed
-                        if (testItem) {
-                            testItem.style.display = 'block';
-                        }
                     } else {
                         toggle.classList.remove('active');
-                        // Hide test button if not subscribed
-                        if (testItem) {
-                            testItem.style.display = 'none';
-                        }
                     }
                 }
             } catch (error) {
                 console.error('Error checking push notifications status:', error);
-                // On error, hide test button to be safe
-                var testItem = document.getElementById('testPushNotificationItem');
-                if (testItem) {
-                    testItem.style.display = 'none';
-                }
             }
         }
         
@@ -700,11 +737,8 @@
                 try {
                     await pushNotificationsManager.unsubscribe();
                     element.classList.remove('active');
-                    const testItem = document.getElementById('testPushNotificationItem');
-                    if (testItem) {
-                        testItem.style.display = 'none';
-                    }
-                    showToast('Push notifications disabled', 'success');
+                    const disabledMessage = getCurrentLanguage() === 'fr' ? 'Notifications push désactivées' : 'Push notifications disabled';
+                    showToast(disabledMessage, 'success');
                 } catch (error) {
                     console.error('Error unsubscribing from push notifications:', error);
                     showToast('Error disabling push notifications', 'error');
@@ -729,13 +763,10 @@
                     
                     // Double-check subscription status
                     const isSubscribed = await pushNotificationsManager.isSubscribed();
-                    const testItem = document.getElementById('testPushNotificationItem');
-                    if (testItem) {
-                        testItem.style.display = isSubscribed ? 'block' : 'none';
-                    }
                     
                     if (isSubscribed) {
-                        showToast('Push notifications enabled! You can now test them below.', 'success');
+                        const enabledMessage = getCurrentLanguage() === 'fr' ? 'Notifications push activées !' : 'Push notifications enabled!';
+                        showToast(enabledMessage, 'success');
                     } else {
                         showToast('Push notifications enabled, but subscription may not be complete. Please try again.', 'error');
                         element.classList.remove('active');
@@ -743,126 +774,44 @@
                 } catch (error) {
                     console.error('Error subscribing to push notifications:', error);
                     element.classList.remove('active');
-                    const testItem = document.getElementById('testPushNotificationItem');
-                    if (testItem) {
-                        testItem.style.display = 'none';
-                    }
                     
                     if (error.message && error.message.includes('User not authenticated')) {
-                        showToast('Session expired. Please refresh the page and try again.', 'error');
+                        const lang = getCurrentLanguage();
+                        const message = lang === 'fr' 
+                            ? 'Session expirée. Veuillez actualiser la page et réessayer.' 
+                            : 'Session expired. Please refresh the page and try again.';
+                        showToast(message, 'error');
                     } else if (error.message && error.message.includes('denied')) {
-                        showToast('Notification permission denied. Please enable it in your browser settings.', 'error');
+                        const lang = getCurrentLanguage();
+                        const message = lang === 'fr' 
+                            ? '🔔 Autorisation refusée. Pour recevoir les notifications, cliquez sur l\'icône 🔒 dans la barre d\'adresse et autorisez les notifications.' 
+                            : '🔔 Permission denied. To receive notifications, click the 🔒 icon in the address bar and allow notifications.';
+                        showToast(message, 'error', 8000); // Message plus long, timeout plus long
+                        
+                        // Afficher un guide visuel
+                        showNotificationGuide(lang);
                     } else if (error.message && error.message.includes('not supported')) {
-                        showToast('Push notifications are not supported in this browser.', 'error');
+                        const lang = getCurrentLanguage();
+                        const message = lang === 'fr' 
+                            ? 'Les notifications push ne sont pas supportées par ce navigateur.' 
+                            : 'Push notifications are not supported in this browser.';
+                        showToast(message, 'error');
                     } else {
-                        showToast('Error enabling push notifications: ' + (error.message || 'Unknown error'), 'error');
+                        const lang = getCurrentLanguage();
+                        const errorPrefix = lang === 'fr' ? 'Erreur d\'activation des notifications: ' : 'Error enabling push notifications: ';
+                        showToast(errorPrefix + (error.message || 'Unknown error'), 'error');
                     }
                 }
             }
         }
 
-        // Test push notification function
+        // Test push notification function - DISABLED IN PRODUCTION
+        /*
         async function testPushNotification() {
-            // First check if notifications are enabled
-            try {
-                const isSubscribed = await pushNotificationsManager.isSubscribed();
-                if (!isSubscribed) {
-                    showToast('Please enable push notifications first by toggling the switch above.', 'error');
-                    return;
-                }
-                
-                // Check notification permission
-                if (Notification.permission !== 'granted') {
-                    showToast('Notification permission is not granted. Please check your browser settings.', 'error');
-                    return;
-                }
-                
-                // Check service worker registration
-                if (!pushNotificationsManager.registration) {
-                    await pushNotificationsManager.init();
-                }
-                
-                if (!pushNotificationsManager.registration) {
-                    showToast('Service Worker not available. Please refresh the page.', 'error');
-                    return;
-                }
-            } catch (error) {
-                console.error('Error checking subscription status:', error);
-                showToast('Unable to check notification status. Please try enabling notifications again.', 'error');
-                return;
-            }
-            
-            try {
-                showToast('Sending test notification...', 'info');
-                
-                const response = await fetch(API_BASE_URL + '/push/test.php', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    let errorData;
-                    try {
-                        errorData = JSON.parse(errorText);
-                    } catch (e) {
-                        errorData = { message: 'Server error: ' + response.status };
-                    }
-                    throw new Error(errorData.message || 'Failed to send test notification');
-                }
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    var successCount = data.data && data.data.success_count ? data.data.success_count : 0;
-                    var message = successCount > 0 
-                        ? 'Test notification sent to ' + successCount + ' device(s)!'
-                        : 'Test notification sent!';
-                    showToast(message, 'success');
-                    
-                    // Check if there were failures or expired subscriptions
-                    if (data.data && data.data.fail_count > 0 && data.data.errors && data.data.errors.length > 0) {
-                        const hasExpired = data.data.errors.some(function(err) {
-                            return err && (err.includes('410') || err.includes('Gone') || err.includes('expired'));
-                        });
-                        if (hasExpired) {
-                            showToast('Some old subscriptions were removed. Please try again.', 'info');
-                        }
-                    }
-                } else {
-                    const errorMsg = data.message || 'Unknown error';
-                    
-                    // Check if error is due to expired subscriptions
-                    if (errorMsg.includes('410') || errorMsg.includes('Gone') || errorMsg.includes('expired')) {
-                        showToast('Your push subscription has expired. Please disable and re-enable push notifications.', 'error');
-                        // Reset toggle state
-                        const toggle = document.getElementById('pushNotificationsToggle');
-                        if (toggle) {
-                            toggle.classList.remove('active');
-                        }
-                        const testItem = document.getElementById('testPushNotificationItem');
-                        if (testItem) {
-                            testItem.style.display = 'none';
-                        }
-                    } else {
-                        showToast('Failed to send test notification: ' + errorMsg, 'error');
-                    }
-                }
-            } catch (error) {
-                console.error('Error sending test notification:', error);
-                if (error.message.includes('No push subscriptions found') || error.message.includes('enable push notifications')) {
-                    showToast('Please enable push notifications first by toggling the switch above, then try again.', 'error');
-                } else {
-                    showToast('Error: ' + (error.message || 'Failed to send test notification'), 'error');
-                }
-            }
+            // This function is disabled in production
+            showToast('Test notifications are disabled in production.', 'info');
         }
-        
-        // Make testPushNotification available globally
-        window.testPushNotification = testPushNotification;
+        */
         
         // Make togglePrivacySetting available globally
         window.togglePrivacySetting = togglePrivacySetting;
@@ -877,6 +826,10 @@
             
             await loadSettings();
             applyLanguage();
+            // Force apply translations after settings are loaded
+            if (typeof applyTranslations === 'function') {
+                applyTranslations();
+            }
             await checkPushNotificationsStatus();
             
             // Listen for browser back/forward button (popstate event)
@@ -903,3 +856,618 @@
                 testItem.style.display = 'block';
             }
         })();
+
+        // Open terms/privacy in correct language
+        function openTermsInLanguage() {
+            const lang = getCurrentLanguage();
+            const url = lang === 'en' ? 'terms-en.html' : 'terms.html';
+            // Stay in same window to preserve session
+            window.location.href = url;
+        }
+
+        function openPrivacyInLanguage() {
+            const lang = getCurrentLanguage();
+            const url = lang === 'en' ? 'privacy-en.html' : 'privacy.html';
+            // Stay in same window to preserve session
+            window.location.href = url;
+        }
+
+        // Load and display terms acceptance info
+        async function loadTermsAcceptanceInfo() {
+            try {
+                const infoElement = document.getElementById('termsAcceptanceInfo');
+                
+                if (!infoElement) {
+                    return;
+                }
+                
+                const response = await fetch('api/auth/me.php', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    const userId = data.data.user.id;
+                    
+                    if (!userId) {
+                        infoElement.textContent = getCurrentLanguage() === 'fr' ? 'Erreur: ID utilisateur introuvable' : 'Error: User ID not found';
+                        infoElement.style.color = '#ef4444';
+                        return;
+                    }
+                    
+                    const userResponse = await fetch('api/users.php?id=' + userId, {
+                        credentials: 'include'
+                    });
+                    const userData = await userResponse.json();
+                    
+                    if (userData.success && userData.data) {
+                        const termsAcceptedAt = userData.data.terms_accepted_at;
+                        const termsVersion = userData.data.terms_version;
+                        
+                        if (termsAcceptedAt) {
+                            const acceptedDate = new Date(termsAcceptedAt);
+                            const formattedDate = acceptedDate.toLocaleDateString(getCurrentLanguage() === 'fr' ? 'fr-FR' : 'en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                            });
+                            
+                            const version = termsVersion || 'v1.0';
+                            const versionName = typeof TERMS_CONFIG !== 'undefined' && TERMS_CONFIG.VERSION_NAME ? TERMS_CONFIG.VERSION_NAME : version;
+                            
+                            infoElement.innerHTML = '<span data-i18n="termsAcceptedOn">' + t('termsAcceptedOn') + '</span> ' + 
+                                                   '<strong>' + formattedDate + '</strong> (' + versionName + ')';
+                            infoElement.style.color = '#10b981';
+                        } else {
+                            infoElement.textContent = getCurrentLanguage() === 'fr' ? 'Non acceptées' : 'Not accepted';
+                            infoElement.style.color = '#ef4444';
+                        }
+                    } else {
+                        infoElement.textContent = getCurrentLanguage() === 'fr' ? 'Erreur de chargement' : 'Loading error';
+                        infoElement.style.color = '#6b7280';
+                    }
+                } else {
+                    infoElement.textContent = getCurrentLanguage() === 'fr' ? 'Erreur de chargement' : 'Loading error';
+                    infoElement.style.color = '#6b7280';
+                }
+            } catch (error) {
+                console.error('Error loading terms acceptance info:', error);
+                const infoElement = document.getElementById('termsAcceptanceInfo');
+                if (infoElement) {
+                    infoElement.textContent = getCurrentLanguage() === 'fr' ? 'Erreur de chargement' : 'Loading error';
+                    infoElement.style.color = '#6b7280';
+                }
+            }
+        }
+
+        // Call on page load
+        setTimeout(loadTermsAcceptanceInfo, 500);
+
+        // PDF Download functions
+        function downloadTermsAsPDF() {
+            const lang = getCurrentLanguage();
+            const url = lang === 'en' ? 'terms-en.html' : 'terms.html';
+            window.open(url + '?print=pdf', '_blank');
+        }
+
+        function downloadPrivacyAsPDF() {
+            const lang = getCurrentLanguage();
+            const url = lang === 'en' ? 'privacy-en.html' : 'privacy.html';
+            window.open(url + '?print=pdf', '_blank');
+        }
+
+        // Conversation Management Functions
+        async function toggleConversationSetting(toggle, settingName) {
+            try {
+                const isActive = toggle.classList.contains('active');
+                const newValue = !isActive;
+                
+                console.log('Toggle state:', {
+                    settingName: settingName,
+                    currentlyActive: isActive,
+                    newValue: newValue
+                });
+                
+                const response = await fetch('api/users.php', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        [settingName]: newValue
+                    })
+                });
+                
+                console.log('API Response status:', response.status);
+                const result = await response.json();
+                console.log('API Response data:', result);
+                
+                if (result.success) {
+                    if (newValue) {
+                        toggle.classList.add('active');
+                    } else {
+                        toggle.classList.remove('active');
+                    }
+                    console.log('Toggle updated successfully');
+                    const message = getCurrentLanguage() === 'fr' ? 'Paramètres sauvegardés' : 'Settings saved';
+                    showToast(message, 'success');
+                } else {
+                    throw new Error(result.message || 'Failed to save setting');
+                }
+            } catch (error) {
+                console.error('Error saving conversation setting:', error);
+                const message = getCurrentLanguage() === 'fr' ? 'Erreur de sauvegarde' : 'Error saving settings';
+                showToast(message, 'error');
+            }
+        }
+
+        // Make toggleConversationSetting available globally
+        window.toggleConversationSetting = toggleConversationSetting;
+
+        /**
+         * Show a visual guide for enabling notifications
+         */
+        function showNotificationGuide(lang) {
+            const title = lang === 'fr' ? 'Comment activer les notifications' : 'How to enable notifications';
+            const steps = lang === 'fr' ? [
+                'Cherchez l\'icône 🔒 ou ℹ️ dans la barre d\'adresse',
+                'Cliquez sur cette icône',
+                'Changez "Notifications" de "Bloquer" à "Autoriser"',
+                'Rechargez la page et réessayez'
+            ] : [
+                'Look for the 🔒 or ℹ️ icon in the address bar',
+                'Click on this icon',  
+                'Change "Notifications" from "Block" to "Allow"',
+                'Reload the page and try again'
+            ];
+            
+            const modal = document.createElement('div');
+            modal.className = 'notification-guide-modal';
+            modal.innerHTML = `
+                <div class="notification-guide-backdrop" onclick="this.closest('.notification-guide-modal').remove()"></div>
+                <div class="notification-guide-content">
+                    <div class="modal-header">
+                        <h3 class="modal-title">${title}</h3>
+                        <button class="close-btn" onclick="this.closest('.notification-guide-modal').remove()" aria-label="Fermer">
+                            ×
+                        </button>
+                    </div>
+                    
+                    <div class="modal-body">
+                        <div class="steps-container">
+                            ${steps.map((step, index) => `
+                                <div class="step-item">
+                                    <div class="step-number">${index + 1}</div>
+                                    <div class="step-text">${step}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <div class="browser-guide">
+                            <p class="browser-title">${lang === 'fr' ? 'Icônes par navigateur :' : 'Icons by browser:'}</p>
+                            <div class="browser-icons">
+                                <div class="browser-item">
+                                    <span class="browser-icon">🔒</span>
+                                    <span class="browser-name">Chrome</span>
+                                </div>
+                                <div class="browser-item">
+                                    <span class="browser-icon">🛡️</span>
+                                    <span class="browser-name">Firefox</span>
+                                </div>
+                                <div class="browser-item">
+                                    <span class="browser-icon">🔒</span>
+                                    <span class="browser-name">Edge</span>
+                                </div>
+                                <div class="browser-item">
+                                    <span class="browser-icon">ℹ️</span>
+                                    <span class="browser-name">Safari</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer">
+                        <button onclick="this.closest('.notification-guide-modal').remove()" class="btn-understand">
+                            ${lang === 'fr' ? 'J\'ai compris' : 'Got it'}
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Style the modal with improved responsive CSS
+            const style = document.createElement('style');
+            style.textContent = `
+                .notification-guide-modal {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    z-index: 10000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 20px;
+                    animation: fadeIn 0.3s ease-out;
+                }
+                
+                .notification-guide-backdrop {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.6);
+                    backdrop-filter: blur(4px);
+                }
+                
+                .notification-guide-content {
+                    background: white;
+                    border-radius: 16px;
+                    width: 100%;
+                    max-width: 520px;
+                    max-height: 90vh;
+                    overflow-y: auto;
+                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+                    position: relative;
+                    animation: slideUp 0.3s ease-out;
+                }
+                
+                .modal-header {
+                    padding: 24px 24px 0;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    border-bottom: 1px solid #e5e7eb;
+                    margin-bottom: 24px;
+                }
+                
+                .modal-title {
+                    margin: 0;
+                    color: #1f2937;
+                    font-size: 1.5rem;
+                    font-weight: 600;
+                }
+                
+                .close-btn {
+                    background: none;
+                    border: none;
+                    font-size: 28px;
+                    color: #6b7280;
+                    cursor: pointer;
+                    padding: 0;
+                    width: 32px;
+                    height: 32px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 50%;
+                    transition: all 0.2s;
+                }
+                
+                .close-btn:hover {
+                    background: #f3f4f6;
+                    color: #374151;
+                }
+                
+                .modal-body {
+                    padding: 0 24px;
+                }
+                
+                .steps-container {
+                    margin-bottom: 32px;
+                }
+                
+                .step-item {
+                    display: flex;
+                    align-items: flex-start;
+                    margin-bottom: 16px;
+                    padding: 12px;
+                    background: #f0fdf4;
+                    border-radius: 12px;
+                    border-left: 4px solid #10b981;
+                }
+                
+                .step-number {
+                    background: #10b981;
+                    color: white;
+                    border-radius: 50%;
+                    width: 28px;
+                    height: 28px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-weight: 600;
+                    font-size: 0.9rem;
+                    flex-shrink: 0;
+                    margin-right: 12px;
+                }
+                
+                .step-text {
+                    color: #374151;
+                    line-height: 1.5;
+                    font-size: 0.95rem;
+                }
+                
+                .browser-guide {
+                    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+                    padding: 20px;
+                    border-radius: 12px;
+                    margin-bottom: 24px;
+                }
+                
+                .browser-title {
+                    margin: 0 0 16px 0;
+                    font-weight: 600;
+                    color: #0f172a;
+                    font-size: 1rem;
+                }
+                
+                .browser-icons {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+                    gap: 12px;
+                }
+                
+                .browser-item {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    padding: 12px;
+                    background: white;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                    transition: transform 0.2s;
+                }
+                
+                .browser-item:hover {
+                    transform: translateY(-2px);
+                }
+                
+                .browser-icon {
+                    font-size: 24px;
+                    margin-bottom: 8px;
+                }
+                
+                .browser-name {
+                    font-size: 0.85rem;
+                    color: #4b5563;
+                    font-weight: 500;
+                }
+                
+                .modal-footer {
+                    padding: 0 24px 24px;
+                    text-align: center;
+                }
+                
+                .btn-understand {
+                    background: linear-gradient(135deg, #10b981, #059669);
+                    color: white;
+                    border: none;
+                    padding: 12px 32px;
+                    border-radius: 8px;
+                    font-size: 1rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    min-width: 120px;
+                }
+                
+                .btn-understand:hover {
+                    background: linear-gradient(135deg, #059669, #047857);
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+                }
+                
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                
+                @keyframes slideUp {
+                    from { 
+                        opacity: 0;
+                        transform: translateY(20px) scale(0.95);
+                    }
+                    to { 
+                        opacity: 1;
+                        transform: translateY(0) scale(1);
+                    }
+                }
+                
+                /* Responsive design */
+                @media (max-width: 640px) {
+                    .notification-guide-modal {
+                        padding: 16px;
+                    }
+                    
+                    .notification-guide-content {
+                        border-radius: 12px;
+                    }
+                    
+                    .modal-header {
+                        padding: 20px 20px 0;
+                        margin-bottom: 20px;
+                    }
+                    
+                    .modal-title {
+                        font-size: 1.25rem;
+                    }
+                    
+                    .modal-body {
+                        padding: 0 20px;
+                    }
+                    
+                    .modal-footer {
+                        padding: 0 20px 20px;
+                    }
+                    
+                    .step-item {
+                        padding: 10px;
+                        margin-bottom: 12px;
+                    }
+                    
+                    .step-number {
+                        width: 24px;
+                        height: 24px;
+                        font-size: 0.8rem;
+                    }
+                    
+                    .step-text {
+                        font-size: 0.9rem;
+                    }
+                    
+                    .browser-icons {
+                        grid-template-columns: repeat(2, 1fr);
+                    }
+                    
+                    .browser-item {
+                        padding: 10px;
+                    }
+                    
+                    .browser-icon {
+                        font-size: 20px;
+                    }
+                }
+                
+                @media (max-width: 480px) {
+                    .browser-icons {
+                        grid-template-columns: 1fr;
+                    }
+                    
+                    .browser-item {
+                        flex-direction: row;
+                        justify-content: center;
+                        gap: 8px;
+                    }
+                    
+                    .browser-icon {
+                        margin-bottom: 0;
+                    }
+                }
+            `;
+            
+            document.head.appendChild(style);
+            document.body.appendChild(modal);
+            
+            // Auto-remove after 20 seconds
+            setTimeout(() => {
+                if (modal.parentNode) {
+                    modal.style.animation = 'fadeIn 0.3s ease-out reverse';
+                    setTimeout(() => modal.remove(), 300);
+                    style.remove();
+                }
+            }, 20000);
+            
+            // Remove style when modal is closed
+            modal.addEventListener('click', (e) => {
+                if (e.target.closest('.close-btn') || e.target.closest('.btn-understand') || e.target.classList.contains('notification-guide-backdrop')) {
+                    style.remove();
+                }
+            });
+        }
+
+        // Initialisation des menus déroulants personnalisés
+        function initCustomSelects() {
+            const customSelects = document.querySelectorAll('.custom-select');
+            
+            customSelects.forEach(select => {
+                const trigger = select.querySelector('.select-trigger');
+                const options = select.querySelector('.select-options');
+                const optionItems = select.querySelectorAll('.select-option');
+                const hiddenInput = select.nextElementSibling;
+                const selectText = select.querySelector('.select-text');
+
+                // Ouvrir/fermer le menu
+                trigger.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    
+                    // Fermer tous les autres menus
+                    document.querySelectorAll('.custom-select').forEach(otherSelect => {
+                        if (otherSelect !== select) {
+                            otherSelect.querySelector('.select-trigger').classList.remove('active');
+                            otherSelect.querySelector('.select-options').classList.remove('open');
+                        }
+                    });
+                    
+                    // Toggle le menu actuel
+                    trigger.classList.toggle('active');
+                    options.classList.toggle('open');
+                });
+
+                // Sélectionner une option
+                optionItems.forEach(option => {
+                    option.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        
+                        // Retirer la sélection précédente
+                        optionItems.forEach(opt => opt.classList.remove('selected'));
+                        
+                        // Ajouter la sélection à l'option cliquée
+                        this.classList.add('selected');
+                        
+                        // Mettre à jour le texte affiché et la valeur
+                        const value = this.getAttribute('data-value');
+                        const text = this.textContent;
+                        
+                        selectText.textContent = text;
+                        hiddenInput.value = value;
+                        select.setAttribute('data-value', value);
+                        
+                        // Fermer le menu
+                        trigger.classList.remove('active');
+                        options.classList.remove('open');
+                    });
+                });
+            });
+
+            // Fermer les menus en cliquant ailleurs
+            document.addEventListener('click', function() {
+                document.querySelectorAll('.custom-select').forEach(select => {
+                    select.querySelector('.select-trigger').classList.remove('active');
+                    select.querySelector('.select-options').classList.remove('open');
+                });
+            });
+        }
+
+        // Initialiser les menus personnalisés au chargement de la page
+        document.addEventListener('DOMContentLoaded', function() {
+            initCustomSelects();
+        });
+
+        // Fonction pour mettre à jour un menu personnalisé
+        function updateCustomSelect(selectElement, value) {
+            if (!selectElement || !value) return;
+
+            const customSelect = selectElement.parentElement.querySelector('.custom-select');
+            if (!customSelect) return;
+
+            const selectText = customSelect.querySelector('.select-text');
+            const hiddenInput = customSelect.nextElementSibling;
+            const options = customSelect.querySelectorAll('.select-option');
+
+            // Trouver l'option correspondante
+            options.forEach(option => {
+                option.classList.remove('selected');
+                if (option.getAttribute('data-value') === value) {
+                    option.classList.add('selected');
+                    if (selectText) selectText.textContent = option.textContent;
+                    if (hiddenInput) hiddenInput.value = value;
+                    customSelect.setAttribute('data-value', value);
+                }
+            });
+        }
+
+        // Fonction pour obtenir la valeur d'un menu personnalisé
+        function getCustomSelectValue(elementId) {
+            const hiddenInput = document.getElementById(elementId);
+            if (hiddenInput) {
+                return hiddenInput.value;
+            }
+            
+            // Fallback pour les anciens selects natifs
+            const selectElement = document.querySelector(`select#${elementId}`);
+            return selectElement ? selectElement.value : '';
+        }

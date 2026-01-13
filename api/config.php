@@ -176,13 +176,9 @@ function getDBConnection() {
         // Log detailed error for debugging
         error_log('Database connection failed: ' . $e->getMessage());
         
-        // Return generic error to user (don't expose DB details)
-        http_response_code(500);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Database connection failed. Please try again later.'
-        ]);
-        exit();
+        // Throw exception instead of exit() to allow proper error handling
+        // This allows calling functions to handle the error gracefully
+        throw new PDOException('Database connection failed: ' . $e->getMessage(), (int)$e->getCode(), $e);
     }
 }
 
@@ -198,10 +194,13 @@ function isDevelopment() {
  * Send JSON response
  */
 function sendResponse($success, $message, $data = null, $statusCode = 200) {
-    // Make sure no output has been sent
-    if (ob_get_level()) {
-        ob_clean();
+    // Clean all output buffers to prevent any output before JSON
+    while (ob_get_level()) {
+        ob_end_clean();
     }
+    
+    // Start a new output buffer
+    ob_start();
     
     // Set headers if not already sent
     if (!headers_sent()) {
@@ -262,7 +261,10 @@ function sendResponse($success, $message, $data = null, $statusCode = 200) {
         $response['data'] = $data;
     }
     
+    // Clean output buffer and send JSON
+    ob_clean();
     echo json_encode($response, JSON_UNESCAPED_UNICODE);
+    ob_end_flush();
     exit();
 }
 
@@ -545,14 +547,22 @@ function checkRateLimit($key, $maxAttempts = 60, $windowSeconds = 60, $identifie
  * @param string|null $identifier Optional identifier
  * @return bool True if allowed, false if rate limited (response already sent)
  */
-function applyRateLimit($key, $maxAttempts = 60, $windowSeconds = 60, $identifier = null) {
+function applyRateLimit($key, $maxAttempts = 60, $windowSeconds = 60, $identifier = null, $customMessage = null) {
     $result = checkRateLimit($key, $maxAttempts, $windowSeconds, $identifier);
     
     if (!$result['allowed']) {
         $remainingMinutes = ceil($result['remaining_seconds'] / 60);
+        
+        // Use custom message if provided, otherwise default
+        if ($customMessage) {
+            $message = str_replace(['{minutes}', '{seconds}'], [$remainingMinutes, $result['remaining_seconds']], $customMessage);
+        } else {
+            $message = 'Too many requests. Please try again in ' . $remainingMinutes . ' minute(s).';
+        }
+        
         sendResponse(
             false, 
-            'Too many requests. Please try again in ' . $remainingMinutes . ' minute(s).', 
+            $message, 
             [
                 'retry_after' => $result['remaining_seconds']
             ], 
@@ -562,4 +572,87 @@ function applyRateLimit($key, $maxAttempts = 60, $windowSeconds = 60, $identifie
     }
     
     return true;
+}
+
+/**
+ * Get client identifier (IP address or user agent hash)
+ * @return string
+ */
+function getClientIdentifier() {
+    // Try to get real IP address
+    $ip = '';
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+        $ip = $_SERVER['HTTP_CLIENT_IP'];
+    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
+    } elseif (!empty($_SERVER['REMOTE_ADDR'])) {
+        $ip = $_SERVER['REMOTE_ADDR'];
+    }
+    
+    // Fallback to user agent if no IP
+    if (empty($ip)) {
+        $ip = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
+    }
+    
+    return $ip;
+}
+
+/**
+ * Reset rate limit counter for a key
+ * @param string $key The rate limit key
+ * @param string|null $identifier Optional identifier (defaults to IP)
+ */
+function resetRateLimit($key, $identifier = null) {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    $clientIdentifier = $identifier ?: getClientIdentifier();
+    $rateLimitKey = 'rate_limit_' . $key . '_' . md5($clientIdentifier);
+    
+    // Remove from session
+    if (isset($_SESSION[$rateLimitKey])) {
+        unset($_SESSION[$rateLimitKey]);
+    }
+}
+
+/**
+ * Get user-friendly security messages
+ */
+function getSecurityMessage($type, $minutes) {
+    $messages = [
+        'login_failed' => [
+            'fr' => "Trop de tentatives de connexion échouées. Pour votre sécurité, veuillez attendre {minutes} minute(s) avant de réessayer.",
+            'en' => "Too many failed login attempts. For your security, please wait {minutes} minute(s) before trying again."
+        ],
+        'forgot_password' => [
+            'fr' => "Trop de demandes de réinitialisation. Veuillez attendre {minutes} minute(s) avant de faire une nouvelle demande.",
+            'en' => "Too many password reset requests. Please wait {minutes} minute(s) before making another request."
+        ],
+        'email_code' => [
+            'fr' => "Trop de demandes de code. Veuillez attendre {minutes} minute(s) avant de demander un nouveau code.",
+            'en' => "Too many code requests. Please wait {minutes} minute(s) before requesting a new code."
+        ]
+    ];
+    
+    // Get user language preference (default to French)
+    $lang = 'fr';
+    if (isset($_SESSION['user_language'])) {
+        $lang = $_SESSION['user_language'];
+    } elseif (isset($_COOKIE['user_language'])) {
+        $lang = $_COOKIE['user_language'];
+    } else {
+        // Try to get from user settings in localStorage via Accept-Language header
+        $acceptLang = $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '';
+        if (strpos($acceptLang, 'en') !== false && strpos($acceptLang, 'en') < strpos($acceptLang, 'fr')) {
+            $lang = 'en';
+        }
+    }
+    
+    if (isset($messages[$type][$lang])) {
+        return str_replace('{minutes}', $minutes, $messages[$type][$lang]);
+    }
+    
+    // Fallback to French
+    return str_replace('{minutes}', $minutes, $messages[$type]['fr'] ?? "Veuillez attendre {minutes} minute(s) avant de réessayer.");
 }

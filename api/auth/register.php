@@ -1,5 +1,5 @@
 <?php
-require_once '../config.php';
+require_once __DIR__ . '/../config.php';
 require_once 'validate_university_email.php';
 require_once 'send_verification_email.php';
 
@@ -9,8 +9,14 @@ $email = trim($data['email'] ?? '');
 $password = $data['password'] ?? '';
 $department = trim($data['department'] ?? '');
 $language = $data['language'] ?? 'en';
+$termsAccepted = $data['termsAccepted'] ?? false; // Consent to terms
 $auth_provider = 'email'; // Default to email registration
 $google_id = null;
+
+// Check terms acceptance
+if (!$termsAccepted) {
+    sendResponse(false, 'You must accept the Terms of Service and Privacy Policy', null, 400);
+}
 
 // Check if this is a Google OAuth registration (data from session)
 if (session_status() === PHP_SESSION_NONE) {
@@ -84,9 +90,13 @@ try {
     // For Google OAuth users, email is already verified by Google
     $emailVerified = ($auth_provider === 'google') ? 1 : 0; // Use integer for MySQL BOOLEAN
     
-    // Insert new user with university_id
-    $stmt = $pdo->prepare("INSERT INTO users (name, email, password, department, university_id, language, auth_provider, google_id, email_verified, email_verification_token, email_verification_token_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$name, $email, $hashedPassword, $department, $universityId, $language, $auth_provider, $google_id, $emailVerified, $emailVerified ? null : $verificationToken, $emailVerified ? null : $verificationTokenExpires]);
+    // Terms acceptance timestamp
+    $termsAcceptedAt = date('Y-m-d H:i:s');
+    $termsVersion = '2026-01-12'; // Version of terms accepted
+    
+    // Insert new user with university_id and terms acceptance
+    $stmt = $pdo->prepare("INSERT INTO users (name, email, password, department, university_id, language, auth_provider, google_id, email_verified, email_verification_token, email_verification_token_expires_at, terms_accepted_at, terms_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$name, $email, $hashedPassword, $department, $universityId, $language, $auth_provider, $google_id, $emailVerified, $emailVerified ? null : $verificationToken, $emailVerified ? null : $verificationTokenExpires, $termsAcceptedAt, $termsVersion]);
     
     // Clear Google OAuth session data if used
     if (isset($_SESSION['google_oauth_data'])) {

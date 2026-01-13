@@ -21,6 +21,7 @@ function openMessagesModal() {
             return;
         }
         modal.classList.add('active');
+        document.body.classList.add('modal-open');
         console.log('Modal opened, showing messages list...');
         
         // Check if showMessagesList function exists
@@ -43,6 +44,7 @@ function openMessagesModal() {
 
 function closeMessagesModal() {
     document.getElementById('messagesModal').classList.remove('active');
+    document.body.classList.remove('modal-open');
     showMessagesList(); // Reset to list view
 }
 

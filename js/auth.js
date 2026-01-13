@@ -147,3 +147,15 @@ function enableAuthenticatedFeatures() {
     }
 }
 
+// Open terms/privacy in correct language
+function openTermsInLanguage() {
+    const lang = getCurrentLanguage();
+    const url = lang === 'en' ? 'terms-en.html' : 'terms.html';
+    window.open(url, '_blank');
+}
+
+function openPrivacyInLanguage() {
+    const lang = getCurrentLanguage();
+    const url = lang === 'en' ? 'privacy-en.html' : 'privacy.html';
+    window.open(url, '_blank');
+}

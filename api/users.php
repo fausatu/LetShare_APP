@@ -14,7 +14,8 @@ try {
             
             $stmt = $pdo->prepare("
                 SELECT u.id, u.name, u.email, u.department, u.avatar, u.language, u.created_at, u.university_id,
-                       u.show_department, u.show_email, u.allow_messages_from_anyone,
+                       u.show_department, u.show_email, u.allow_messages_from_anyone, u.terms_accepted_at, u.terms_version,
+                       u.auto_delete_rejected_conversations,
                        univ.name as university_name, univ.code as university_code, univ.logo as university_logo
                 FROM users u
                 LEFT JOIN universities univ ON u.university_id = univ.id
@@ -28,6 +29,17 @@ try {
                 $userData['show_department'] = (bool)($userData['show_department'] ?? true);
                 $userData['show_email'] = (bool)($userData['show_email'] ?? false);
                 $userData['allow_messages_from_anyone'] = (bool)($userData['allow_messages_from_anyone'] ?? true);
+                $userData['auto_delete_rejected_conversations'] = (bool)($userData['auto_delete_rejected_conversations'] ?? true);
+                
+                // Check if terms acceptance is required
+                $userData['terms_required'] = empty($userData['terms_accepted_at']);
+                
+                // Keep terms_accepted_at and terms_version for settings display
+                // Only viewing own profile should see this sensitive info
+                if ($userId != $user['id']) {
+                    unset($userData['terms_accepted_at']);
+                    unset($userData['terms_version']);
+                }
             }
             
             if (!$userData) {
@@ -122,6 +134,12 @@ try {
                 $params[] = (bool)$data['allow_messages_from_anyone'] ? 1 : 0;
             }
             
+            // Conversation management settings
+            if (isset($data['auto_delete_rejected_conversations'])) {
+                $updates[] = "auto_delete_rejected_conversations = ?";
+                $params[] = (bool)$data['auto_delete_rejected_conversations'] ? 1 : 0;
+            }
+            
             if (empty($updates)) {
                 sendResponse(false, 'No fields to update', null, 400);
             }
@@ -136,6 +154,7 @@ try {
             $stmt = $pdo->prepare("
                 SELECT u.id, u.name, u.email, u.department, u.avatar, u.language, u.university_id,
                        u.show_department, u.show_email, u.allow_messages_from_anyone,
+                       u.auto_delete_rejected_conversations,
                        univ.name as university_name, univ.code as university_code, univ.logo as university_logo
                 FROM users u
                 LEFT JOIN universities univ ON u.university_id = univ.id
@@ -149,6 +168,7 @@ try {
                 $updatedUser['show_department'] = (bool)($updatedUser['show_department'] ?? true);
                 $updatedUser['show_email'] = (bool)($updatedUser['show_email'] ?? false);
                 $updatedUser['allow_messages_from_anyone'] = (bool)($updatedUser['allow_messages_from_anyone'] ?? true);
+                $updatedUser['auto_delete_rejected_conversations'] = (bool)($updatedUser['auto_delete_rejected_conversations'] ?? true);
             }
             
             sendResponse(true, 'Profile updated successfully', $updatedUser);

@@ -4,7 +4,7 @@ if (ob_get_level()) {
     ob_clean();
 }
 
-require_once '../config.php';
+require_once __DIR__ . '/../config.php';
 
 $data = getRequestData();
 $email = $data['email'] ?? '';
@@ -16,24 +16,42 @@ if (empty($email) || empty($password)) {
 }
 
 try {
-    // Rate limiting: max 5 login attempts per 15 minutes per IP
-    if (!applyRateLimit('login_attempts', 5, 900)) {
-        return; // Response already sent by applyRateLimit
-    }
-    
     $pdo = getDBConnection();
-    $stmt = $pdo->prepare("SELECT id, name, email, password, department, avatar, language, email_verified FROM users WHERE email = ?");
+    $stmt = $pdo->prepare("SELECT id, name, email, password, department, avatar, language, email_verified, terms_accepted_at FROM users WHERE email = ?");
     $stmt->execute([$email]);
     $user = $stmt->fetch();
     
     if (!$user) {
+        // Rate limiting: max 5 failed login attempts per 15 minutes per IP
+        $result = checkRateLimit('login_failed_attempts', 5, 900);
+        if (!$result['allowed']) {
+            $remainingMinutes = ceil($result['remaining_seconds'] / 60);
+            $message = getSecurityMessage('login_failed', $remainingMinutes);
+            sendResponse(false, $message, ['retry_after' => $result['remaining_seconds']], 429);
+            return;
+        }
+        // Count this failed attempt
+        checkRateLimit('login_failed_attempts', 5, 900);
         sendResponse(false, 'Invalid email or password', null, 401);
     }
     
     // Verify password
     if (!password_verify($password, $user['password'])) {
+        // Rate limiting: max 5 failed login attempts per 15 minutes per IP
+        $result = checkRateLimit('login_failed_attempts', 5, 900);
+        if (!$result['allowed']) {
+            $remainingMinutes = ceil($result['remaining_seconds'] / 60);
+            $message = getSecurityMessage('login_failed', $remainingMinutes);
+            sendResponse(false, $message, ['retry_after' => $result['remaining_seconds']], 429);
+            return;
+        }
+        // Count this failed attempt
+        checkRateLimit('login_failed_attempts', 5, 900);
         sendResponse(false, 'Invalid email or password', null, 401);
     }
+    
+    // Success! Reset rate limit counter for this IP
+    resetRateLimit('login_failed_attempts');
     
     // Check if email is verified
     $emailVerified = (bool)$user['email_verified'];
@@ -76,6 +94,12 @@ try {
     // Remove password from response
     unset($user['password']);
     
+    // Check if user needs to accept terms
+    $termsRequired = empty($user['terms_accepted_at']);
+    if ($termsRequired) {
+        unset($user['terms_accepted_at']); // Don't send null to frontend
+    }
+    
     $message = $emailVerified 
         ? 'Login successful' 
         : 'Login successful. Please verify your email address to access all features.';
@@ -83,7 +107,8 @@ try {
     sendResponse(true, $message, [
         'user' => $user,
         'token' => $_SESSION['token'],
-        'email_verified' => $emailVerified
+        'email_verified' => $emailVerified,
+        'terms_required' => $termsRequired
     ]);
     
 } catch (PDOException $e) {

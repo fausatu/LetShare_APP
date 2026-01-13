@@ -208,7 +208,7 @@
                     // Check privacy setting: only show department if show_department is true
                     if (user.show_department === true || (user.show_department === undefined || user.show_department === null)) {
                         // Default to true if undefined/null (backward compatibility)
-                        var departmentText = (user.department || 'Finance') + ' Major';
+                        var departmentText = (user.department || 'Finance') + ' ' + t('majorSuffix');
                         profileMajor.textContent = departmentText;
                         profileMajor.style.display = 'block';
                         console.log('loadUserProfile - Department updated to:', departmentText);
@@ -290,7 +290,7 @@
                 // Check privacy setting: only show department if show_department is true
                 if (user.show_department === true || (user.show_department === undefined || user.show_department === null)) {
                     // Default to true if undefined/null (backward compatibility)
-                    profileMajor.textContent = (user.department || 'Finance') + ' Major';
+                    profileMajor.textContent = (user.department || 'Finance') + ' ' + t('majorSuffix');
                     profileMajor.style.display = 'block';
                 } else {
                     // Hide department if privacy setting is false
@@ -308,13 +308,12 @@
                 universityLogoContainer.style.display = 'none';
             }
         }
-            }
-            var currentUserForReviews = getCurrentUserSync();      
+            
             // Load ratings and reviews (async IIFE to use await)
-            // Use the captured user value from earlier in the function
-            if (currentUserForReviews && currentUserForReviews.id) {
+            // Use the user value from earlier in the function
+            if (user && user.id) {
                 // Capture user.id in closure to avoid scope issues
-                var userId = currentUserForReviews.id;
+                var userId = user.id;
                 (async function(userId) {
                     try {
                         console.log('Loading reviews for user ID:', userId);
@@ -405,9 +404,9 @@
                     profileReviews.textContent = '(no reviews yet)';
                 }
             }
-        
+        }
 
-        // Items data (same as in Test.html)
+        // Items data (same as in index.html)
         const allItems = [
             {
                 id: 1,
@@ -570,9 +569,11 @@
                         '</div>' +
                             '<img src="' + (item.image || '') + '" alt="' + item.title + '" class="item-image" onerror="this.style.display=\'none\'">' +
                             '<div class="item-info">' +
-                        '<div class="item-type ' + typeClass + '">' + typeText + '</div>' +
+                        '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">' +
+                            '<div class="item-type ' + typeClass + '">' + typeText + '</div>' +
+                            '<p class="item-time" style="margin: 0; font-size: 0.75rem; color: #9ca3af;" data-created-at="' + (item.created_at || '') + '">' + (item.created_at ? formatTimeAgo(item.created_at) : (item.time || 'just now')) + '</p>' +
+                        '</div>' +
                                 '<h3>' + item.title + '</h3>' +
-                                '<p class="item-time" data-created-at="' + (item.created_at || '') + '">' + (item.created_at ? formatTimeAgo(item.created_at) : (item.time || 'just now')) + '</p>' +
                             '</div>';
                     
                     postedItemsContainer.appendChild(card);
@@ -635,8 +636,8 @@
                 interestedItemsContainer.classList.remove('has-items');
                 interestedItemsContainer.innerHTML = 
                     '<div class="empty-state">' +
-                        '<h3>No interested items yet</h3>' +
-                        '<p>Items you mark as interested will appear here</p>' +
+                        '<h3>' + t('noInterestedItems') + '</h3>' +
+                        '<p>' + t('interestedItemsDesc') + '</p>' +
                     '</div>';
             } else {
                 interestedItemsContainer.classList.add('has-items');
@@ -648,7 +649,7 @@
                         card.classList.add('unavailable');
                     }
                     card.onclick = function() {
-                        window.location.href = 'Test.html';
+                        window.location.href = 'index.html';
                     };
                     
                     var typeClass = item.type === 'donation' ? 'donation' : 'exchange';
@@ -913,8 +914,8 @@
                 messagesList.classList.remove('has-items');
                 messagesList.innerHTML = 
                     '<div class="empty-state">' +
-                        '<h3>No request yet</h3>' +
-                        '<p>Your requests will appear here</p>' +
+                        '<h3>' + t('noRequestYet') + '</h3>' +
+                        '<p>' + t('requestsDesc') + '</p>' +
                     '</div>';
             } else {
                 messagesList.classList.add('has-items');
@@ -1112,6 +1113,20 @@
             
             document.body.appendChild(modal);
             modal.classList.add('active');
+            document.body.classList.add('modal-open');
+            
+            // Prevent scroll on modal backdrop
+            modal.addEventListener('wheel', function(e) {
+                if (e.target === modal) {
+                    e.preventDefault();
+                }
+            });
+            
+            modal.addEventListener('touchmove', function(e) {
+                if (e.target === modal) {
+                    e.preventDefault();
+                }
+            });
             
             // Close modal when clicking outside (on backdrop)
             modal.addEventListener('click', function(event) {
@@ -1133,6 +1148,7 @@
             if (modal) {
                 modal.remove();
             }
+            document.body.classList.remove('modal-open');
             currentConversation = null;
         }
 
@@ -1177,6 +1193,7 @@
             
             var currentUser = getCurrentUserSync();
             var isOwner = conversation.isOwner || (conversation.owner === currentUser.name);
+            var itemType = conversation.itemType || 'exchange'; // Default to exchange if not specified
             
             if (isOwner && conversation.status === 'pending') {
                 actionsContainer.innerHTML = 
@@ -1184,50 +1201,110 @@
                         '<button class="btn-accept" onclick="acceptRequest()">Accept Request</button>' +
                         '<button class="btn-reject" onclick="rejectRequest()">Reject</button>' +
                     '</div>';
-            } else if (conversation.status === 'accepted' && !isOwner) {
-                actionsContainer.innerHTML = 
-                    '<div class="conversation-buttons">' +
-                        '<button class="btn-confirm" onclick="confirmReceived()">Confirm Item Received</button>' +
-                    '</div>';
-            } else if (conversation.status === 'completed' && !isOwner) {
-                // Check if user has already left a review for this specific conversation
-                // Use dbId (database ID) if available, otherwise use id
-                var conversationId = conversation.dbId || conversation.id || null;
-                var hasAlreadyReviewed = false;
-                
-                if (conversationId && currentUser.id) {
-                    try {
-                        var ownerId = conversation.ownerId || null;
-                        if (ownerId) {
-                            const reviewsResponse = await reviewsAPI.get(ownerId);
-                            if (reviewsResponse.success && reviewsResponse.data && reviewsResponse.data.reviews) {
-                                // Check if current user has already reviewed this specific conversation
-                                hasAlreadyReviewed = reviewsResponse.data.reviews.some(function(review) {
-                                    // Compare conversation IDs (both should be database IDs)
-                                    var reviewConvId = review.conversationId;
-                                    return review.reviewerId === currentUser.id && 
-                                           reviewConvId && 
-                                           reviewConvId === conversationId;
-                                });
-                            }
-                        }
-                    } catch (error) {
-                        console.error('Error checking existing review:', error);
-                        // If error, show button anyway (API will prevent duplicate)
+                    
+            } else if (conversation.status === 'accepted') {
+                if (itemType === 'donation') {
+                    // Donation: Only requester can confirm
+                    if (!isOwner) {
+                        actionsContainer.innerHTML = 
+                            '<div class="conversation-buttons">' +
+                                '<button class="btn-confirm" onclick="confirmReceived()">Confirm Item Received</button>' +
+                            '</div>';
                     }
-                }
-                
-                if (!hasAlreadyReviewed) {
+                } else {
+                    // Exchange: Both can confirm
                     actionsContainer.innerHTML = 
                         '<div class="conversation-buttons">' +
-                            '<button class="btn-review" onclick="openReviewModal()">Leave a Review</button>' +
+                            '<button class="btn-confirm" onclick="confirmExchange()">Confirm Exchange Completed</button>' +
+                        '</div>';
+                }
+                
+            } else if (conversation.status === 'partial_confirmed') {
+                // Exchange partially confirmed - show who confirmed and allow other to confirm
+                var ownerConfirmed = conversation.ownerConfirmedAt;
+                var requesterConfirmed = conversation.requesterConfirmedAt;
+                var waitingFor = '';
+                
+                if (ownerConfirmed && !requesterConfirmed) {
+                    waitingFor = isOwner ? 'Waiting for other party to confirm...' : 'Please confirm exchange completion';
+                } else if (requesterConfirmed && !ownerConfirmed) {
+                    waitingFor = isOwner ? 'Please confirm exchange completion' : 'Waiting for other party to confirm...';
+                }
+                
+                if ((isOwner && !ownerConfirmed) || (!isOwner && !requesterConfirmed)) {
+                    actionsContainer.innerHTML = 
+                        '<div class="conversation-buttons">' +
+                            '<button class="btn-confirm" onclick="confirmExchange()">Confirm Exchange Completed</button>' +
+                            '<p style="color: #9ca3af; font-size: 0.875rem; text-align: center; margin-top: 0.5rem;">' + waitingFor + '</p>' +
                         '</div>';
                 } else {
                     actionsContainer.innerHTML = 
                         '<div class="conversation-buttons">' +
-                            '<p style="color: #9ca3af; font-size: 0.875rem; text-align: center; padding: 0.5rem;">Review already submitted</p>' +
+                            '<p style="color: #9ca3af; font-size: 0.875rem; text-align: center; padding: 0.5rem;">' + waitingFor + '</p>' +
                         '</div>';
                 }
+                
+            } else if (conversation.status === 'completed') {
+                // Show review options based on item type
+                await loadReviewActions(conversation, currentUser, isOwner, itemType);
+            }
+        }
+        
+        async function loadReviewActions(conversation, currentUser, isOwner, itemType) {
+            var actionsContainer = document.getElementById('conversationActions');
+            var conversationId = conversation.dbId || conversation.id || null;
+            
+            if (itemType === 'donation') {
+                // Donation: Only requester can review owner
+                if (!isOwner && conversationId && currentUser.id) {
+                    var hasReviewed = await checkIfUserReviewedConversation(conversationId, currentUser.id, conversation.ownerId);
+                    
+                    if (!hasReviewed) {
+                        actionsContainer.innerHTML = 
+                            '<div class="conversation-buttons">' +
+                                '<button class="btn-review" onclick="openReviewModal()">Leave a Review</button>' +
+                            '</div>';
+                    } else {
+                        actionsContainer.innerHTML = 
+                            '<div class="conversation-buttons">' +
+                                '<p style="color: #9ca3af; font-size: 0.875rem; text-align: center; padding: 0.5rem;">Review already submitted</p>' +
+                            '</div>';
+                    }
+                }
+            } else {
+                // Exchange: Both can review each other
+                if (conversationId && currentUser.id) {
+                    var targetUserId = isOwner ? conversation.requesterId : conversation.ownerId;
+                    var hasReviewed = await checkIfUserReviewedConversation(conversationId, currentUser.id, targetUserId);
+                    
+                    if (!hasReviewed) {
+                        actionsContainer.innerHTML = 
+                            '<div class="conversation-buttons">' +
+                                '<button class="btn-review" onclick="openReviewModal()">Leave a Review</button>' +
+                            '</div>';
+                    } else {
+                        actionsContainer.innerHTML = 
+                            '<div class="conversation-buttons">' +
+                                '<p style="color: #9ca3af; font-size: 0.875rem; text-align: center; padding: 0.5rem;">Review already submitted</p>' +
+                            '</div>';
+                    }
+                }
+            }
+        }
+        
+        async function checkIfUserReviewedConversation(conversationId, reviewerId, targetUserId) {
+            try {
+                const reviewsResponse = await reviewsAPI.get(targetUserId);
+                if (reviewsResponse.success && reviewsResponse.data && reviewsResponse.data.reviews) {
+                    return reviewsResponse.data.reviews.some(function(review) {
+                        return review.reviewerId === reviewerId && 
+                               review.conversationId === conversationId;
+                    });
+                }
+                return false;
+            } catch (error) {
+                console.error('Error checking existing review:', error);
+                return false; // Show button anyway if error
             }
         }
 
@@ -1432,7 +1509,8 @@
             modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;';
             
             var modalContent = document.createElement('div');
-            modalContent.style.cssText = 'background: white; border-radius: 12px; padding: 2rem; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);';
+            modalContent.style.cssText = 'background: white; border-radius: 12px; padding: 1.5rem; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); scrollbar-width: none; -ms-overflow-style: none;';
+            modalContent.classList.add('modal-content-scrollable');
             
             var reviewsHTML = '';
             if (reviews.length === 0) {
@@ -1445,37 +1523,62 @@
                     }
                     
                     var reviewerAvatar = review.reviewerAvatar 
-                        ? '<img src="' + review.reviewerAvatar + '" alt="' + review.reviewer + '" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">'
-                        : '<div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #10b981, #059669); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">' + (review.reviewer ? review.reviewer.charAt(0).toUpperCase() : 'U') + '</div>';
+                        ? '<img src="' + review.reviewerAvatar + '" alt="' + review.reviewer + '" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;">'
+                        : '<div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #10b981, #059669); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.875rem;">' + (review.reviewer ? review.reviewer.charAt(0).toUpperCase() : 'U') + '</div>';
                     
                     reviewsHTML += 
-                        '<div style="border-bottom: 1px solid #e5e7eb; padding: 1.5rem 0;">' +
-                            '<div style="display: flex; gap: 1rem; margin-bottom: 0.75rem;">' +
+                        '<div style="border-bottom: 1px solid #e5e7eb; padding: 1rem 0;">' +
+                            '<div style="display: flex; gap: 0.75rem; margin-bottom: 0.5rem;">' +
                                 reviewerAvatar +
                                 '<div style="flex: 1;">' +
-                                    '<div style="font-weight: 600; color: #1f2937; margin-bottom: 0.25rem;">' + (review.reviewer || 'Anonymous') + '</div>' +
-                                    '<div style="color: #6b7280; font-size: 0.875rem; margin-bottom: 0.5rem;">' + review.date + '</div>' +
-                                    '<div style="margin-bottom: 0.5rem;">' + starsHTML + '</div>' +
+                                    '<div style="font-weight: 600; color: #1f2937; margin-bottom: 0.25rem; font-size: 0.9375rem;">' + (review.reviewer || 'Anonymous') + '</div>' +
+                                    '<div style="color: #6b7280; font-size: 0.8125rem; margin-bottom: 0.375rem;">' + review.date + '</div>' +
+                                    '<div style="margin-bottom: 0.375rem;">' + starsHTML + '</div>' +
                                 '</div>' +
                             '</div>' +
-                            (review.text ? '<p style="color: #374151; line-height: 1.6; margin: 0;">' + review.text + '</p>' : '') +
+                            (review.text ? '<p style="color: #374151; line-height: 1.5; margin: 0; font-size: 0.875rem;">' + review.text + '</p>' : '') +
                         '</div>';
                 });
             }
             
             modalContent.innerHTML = 
-                '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">' +
-                    '<h2 style="margin: 0; color: #1f2937; font-size: 1.5rem; font-weight: 600;">My Reviews</h2>' +
-                    '<button onclick="closeMyReviewsModal()" style="background: none; border: none; font-size: 1.5rem; color: #6b7280; cursor: pointer; padding: 0.25rem 0.5rem; line-height: 1;">✕</button>' +
+                '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">' +
+                    '<h2 style="margin: 0; color: #1f2937; font-size: 1.25rem; font-weight: 600;">My Reviews</h2>' +
+                    '<button onclick="closeMyReviewsModal()" style="background: none; border: none; font-size: 1.25rem; color: #6b7280; cursor: pointer; padding: 0.25rem 0.5rem; line-height: 1;">✕</button>' +
                 '</div>' +
-                '<div style="background: #f9fafb; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; text-align: center;">' +
-                    '<div style="font-size: 2rem; font-weight: 700; color: #1f2937; margin-bottom: 0.25rem;">' + rating.average.toFixed(1) + '</div>' +
-                    '<div style="color: #6b7280; font-size: 0.875rem;">' + rating.count + ' review' + (rating.count !== 1 ? 's' : '') + '</div>' +
+                '<div style="background: #f9fafb; border-radius: 8px; padding: 0.75rem; margin-bottom: 1rem; text-align: center;">' +
+                    '<div style="font-size: 1.75rem; font-weight: 700; color: #1f2937; margin-bottom: 0.25rem;">' + rating.average.toFixed(1) + '</div>' +
+                    '<div style="color: #6b7280; font-size: 0.8125rem;">' + rating.count + ' review' + (rating.count !== 1 ? 's' : '') + '</div>' +
                 '</div>' +
                 '<div>' + reviewsHTML + '</div>';
             
             modal.appendChild(modalContent);
             document.body.appendChild(modal);
+            document.body.classList.add('modal-open');
+            
+            // Prevent scroll on modal backdrop
+            modal.addEventListener('wheel', function(e) {
+                if (e.target === modal) {
+                    e.preventDefault();
+                }
+            });
+            
+            modal.addEventListener('touchmove', function(e) {
+                if (e.target === modal) {
+                    e.preventDefault();
+                }
+            });
+            
+            // Prevent scroll propagation from modal content
+            modalContent.addEventListener('wheel', function(e) {
+                var atTop = modalContent.scrollTop === 0;
+                var atBottom = modalContent.scrollTop + modalContent.clientHeight >= modalContent.scrollHeight;
+                
+                if ((atTop && e.deltaY < 0) || (atBottom && e.deltaY > 0)) {
+                    e.preventDefault();
+                }
+                e.stopPropagation();
+            });
             
             // Close on backdrop click
             modal.addEventListener('click', function(e) {
@@ -1495,6 +1598,7 @@
         if (modal) {
             modal.remove();
         }
+        document.body.classList.remove('modal-open');
     }
 
         async function confirmReceived() {
@@ -1515,6 +1619,31 @@
             } catch (error) {
                 console.error('Error confirming receipt:', error);
                 showToast('Error confirming receipt. Please try again.');
+            }
+        }
+
+        async function confirmExchange() {
+            if (!currentConversation) return;
+            
+            try {
+                var conversationId = currentConversation.id;
+                const response = await conversationsAPI.updateStatus(conversationId, 'completed');
+                
+                if (response.success) {
+                    // Reload conversation to get updated status
+                    await reloadConversation();
+                    
+                    if (currentConversation.status === 'completed') {
+                        showToast('Exchange completed! You can now leave a review.');
+                    } else if (currentConversation.status === 'partial_confirmed') {
+                        showToast('Confirmation recorded. Waiting for the other party to confirm.');
+                    }
+                } else {
+                    throw new Error(response.message || 'Failed to confirm exchange');
+                }
+            } catch (error) {
+                console.error('Error confirming exchange:', error);
+                showToast('Error confirming exchange. Please try again.');
             }
         }
 
@@ -1571,6 +1700,20 @@
                 var modal = document.getElementById('reviewModal');
                 if (modal) {
                     modal.classList.add('active');
+                    document.body.classList.add('modal-open');
+                    
+                    // Prevent scroll on modal backdrop
+                    modal.addEventListener('wheel', function(e) {
+                        if (e.target === modal) {
+                            e.preventDefault();
+                        }
+                    });
+                    
+                    modal.addEventListener('touchmove', function(e) {
+                        if (e.target === modal) {
+                            e.preventDefault();
+                        }
+                    });
                 }
             }, 100);
         }
@@ -1579,6 +1722,7 @@
             var modal = document.getElementById('reviewModal');
             if (modal) {
                 modal.classList.remove('active');
+                document.body.classList.remove('modal-open');
             }
             selectedRating = 0;
             reviewedUserId = null;
@@ -1729,8 +1873,8 @@
                     historyContainer.classList.remove('has-items');
                     historyContainer.innerHTML =
                         '<div class="empty-state">' +    
-                            '<h3>No history yet</h3>' +
-                            '<p>Your completed exchanges will appear here</p>' +
+                            '<h3>' + t('noHistoryYet') + '</h3>' +
+                            '<p>' + t('historyDesc') + '</p>' +
                         '</div>';
                 } else {
                     historyContainer.classList.add('has-items');
@@ -1924,6 +2068,26 @@
             const isAuthenticated = await checkAuthentication();
             if (!isAuthenticated) {
                 return; // Redirect already happened
+            }
+            
+            // Sync language from API to localStorage
+            try {
+                const userResponse = await authAPI.getCurrentUser();
+                if (userResponse.success && userResponse.data && userResponse.data.user) {
+                    var userLanguage = userResponse.data.user.language;
+                    if (userLanguage) {
+                        var settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+                        settings.language = userLanguage;
+                        localStorage.setItem('userSettings', JSON.stringify(settings));
+                    }
+                }
+            } catch (error) {
+                console.error('Error syncing language:', error);
+            }
+            
+            // Apply translations immediately after syncing language
+            if (typeof applyTranslations === 'function') {
+                applyTranslations();
             }
             
             // Check if profile was just updated (from settings page)

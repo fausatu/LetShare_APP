@@ -5,32 +5,47 @@
 
 // Use absolute URL for WAMP server
 // If running on WAMP (localhost), use this:
-// Note: We use the actual folder name XHANGE_APP
+// Note: We automatically detect the folder name from the current URL
 // Determine API base URL based on current hostname
 const API_BASE_URL = (function() {
     const hostname = window.location.hostname;
     const port = window.location.port;
     const protocol = window.location.protocol; // http: or https:
+    const pathname = window.location.pathname;
+    
+    // Extract the project folder name from the pathname (for WAMP/localhost)
+    // e.g., /Letshare_app/index.html -> Letshare_app
+    const projectFolder = pathname.split('/')[1] || 'Letshare_app';
     
     // If accessing via localhost or 127.0.0.1 with a different port (Live Server, etc.)
     if ((hostname === 'localhost' || hostname === '127.0.0.1') && (port === '5500' || port === '3000' || port === '8080')) {
-        return 'http://localhost/XHANGE_APP/api';
+        return 'http://localhost/' + projectFolder + '/api';
     }
     
     // If accessing via local network IP (192.168.x.x)
     if (hostname.match(/^192\.168\.\d+\.\d+$/)) {
-        return 'http://' + hostname + '/XHANGE_APP/api';
+        return 'http://' + hostname + '/' + projectFolder + '/api';
     }
     
     // If accessing via ngrok, localtunnel, or other remote service
     // Use the same protocol and hostname as the current page
     if (hostname.includes('ngrok') || hostname.includes('loca.lt') || hostname.includes('ngrok-free.app') || hostname.includes('ngrok.io')) {
-        return protocol + '//' + hostname + (port ? ':' + port : '') + '/XHANGE_APP/api';
+        return protocol + '//' + hostname + (port ? ':' + port : '') + '/' + projectFolder + '/api';
     }
     
     // Render.com detection
     if (hostname.includes('onrender.com')) {
         return protocol + '//' + hostname + (port ? ':' + port : '') + '/api';
+    }
+    
+    // InfinityFree detection
+    if (hostname.includes('infinityfreeapp.com') || hostname.includes('.rf.gd') || hostname.includes('.ct.ws')) {
+        return protocol + '//' + hostname + '/api';
+    }
+    
+    // For localhost without special ports (WAMP default)
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'http://localhost/' + projectFolder + '/api';
     }
     
     // Default: relative path (same origin)

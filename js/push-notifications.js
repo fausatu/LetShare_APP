@@ -8,20 +8,25 @@ var API_BASE_URL_PUSH = (function() {
     const protocol = window.location.protocol;
     
     if ((hostname === 'localhost' || hostname === '127.0.0.1') && (port === '5500' || port === '3000' || port === '8080')) {
-        return 'http://localhost/XHANGE_APP/api';
+        return 'http://localhost/Letshare_app/api';
     }
     
     if (hostname.match(/^192\.168\.\d+\.\d+$/)) {
-        return 'http://' + hostname + '/XHANGE_APP/api';
+        return 'http://' + hostname + '/Letshare_app/api';
     }
     
     if (hostname.includes('ngrok') || hostname.includes('loca.lt') || hostname.includes('ngrok-free.app') || hostname.includes('ngrok.io')) {
-        return protocol + '//' + hostname + (port ? ':' + port : '') + '/XHANGE_APP/api';
+        return protocol + '//' + hostname + (port ? ':' + port : '') + '/Letshare_app/api';
     }
     
     // Render.com detection
     if (hostname.includes('onrender.com')) {
         return protocol + '//' + hostname + (port ? ':' + port : '') + '/api';
+    }
+    
+    // InfinityFree detection
+    if (hostname.includes('infinityfreeapp.com') || hostname.includes('.rf.gd') || hostname.includes('.ct.ws')) {
+        return protocol + '//' + hostname + '/api';
     }
     
     return 'api';
@@ -40,26 +45,26 @@ var pushNotificationsManager = {
         
         try {
             // Register service worker - determine path based on current location
-            // For ngrok, we need to include the full path with "XHANGE_APP"
+            // For ngrok, we need to include the full path with "Letshare_app"
             let swPath = '/sw.js';
             const hostname = window.location.hostname;
             const pathname = window.location.pathname;
             
-            // If accessing via ngrok or if pathname includes "XHANGE_APP", adjust path
+            // If accessing via ngrok or if pathname includes "Letshare_app", adjust path
             if (hostname.includes('ngrok') || hostname.includes('ngrok-free.app') || hostname.includes('ngrok.io')) {
                 // Check if we're in a subdirectory
-                if (pathname.includes('XHANGE')) {
+                if (pathname.includes('Letshare')) {
                     // Extract the base path (everything before the filename)
                     const basePath = pathname.substring(0, pathname.lastIndexOf('/'));
                     swPath = basePath + '/sw.js';
                 } else {
                     // Root level, but might need the folder name
-                    swPath = '/XHANGE_APP/sw.js';
+                    swPath = '/Letshare_app/sw.js';
                 }
             } else if (hostname.includes('onrender.com')) {
                 // Render.com: Service Worker should be at root
                 swPath = '/sw.js';
-            } else if (pathname.includes('XHANGE')) {
+            } else if (pathname.includes('Letshare')) {
                 // Localhost with folder path
                 const basePath = pathname.substring(0, pathname.lastIndexOf('/'));
                 swPath = basePath + '/sw.js';
@@ -100,7 +105,8 @@ var pushNotificationsManager = {
         var permission = await Notification.requestPermission();
         
         if (permission !== 'granted') {
-            throw new Error('Notification permission denied');
+            // Create a more user-friendly error message
+            throw new Error('Notification permission denied by user');
         }
         
             // Subscribe to push notifications

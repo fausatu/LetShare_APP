@@ -4,7 +4,7 @@
  * Creates a new user account after email code verification
  */
 
-require_once '../config.php';
+require_once __DIR__ . '/../config.php';
 require_once 'validate_university_email.php';
 
 $data = getRequestData();

@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Connexion par Email - LetShare</title>
     <link rel="stylesheet" href="css/email_login.css">
 </head>
@@ -21,14 +21,7 @@
         
         <!-- Right side - Form -->
         <div class="auth-form-section">
-            <div class="auth-form-box" style="position: relative;">
-                <!-- Language Selector -->
-                <div style="position: absolute; top: 20px; right: 20px; z-index: 10;">
-                    <select id="languageSelector" style="padding: 0.5rem 1rem; border: 2px solid #e5e7eb; border-radius: 0.5rem; background: white; color: #1f2937; font-size: 0.875rem; cursor: pointer; outline: none;" onchange="changeLanguage(this.value)">
-                        <option value="fr">Français</option>
-                        <option value="en">English</option>
-                    </select>
-                </div>
+            <div class="auth-form-box">
                 
                 <div class="auth-form-header">
                     <h1 data-i18n="emailLoginTitle">Connexion par Email</h1>
@@ -184,7 +177,12 @@
         function applyTranslations() {
             const lang = getCurrentLanguage();
             document.documentElement.lang = lang;
-            document.getElementById('languageSelector').value = lang;
+            
+            // Update language selector if it exists
+            const languageSelector = document.getElementById('languageSelector');
+            if (languageSelector) {
+                languageSelector.value = lang;
+            }
             
             // Translate elements with data-i18n
             document.querySelectorAll('[data-i18n]').forEach(function(el) {
@@ -214,7 +212,55 @@
             settings.language = lang;
             localStorage.setItem('userSettings', JSON.stringify(settings));
             applyTranslations();
+            
+            // Update selected language text (only if element exists)
+            const langNames = { fr: 'Français', en: 'English' };
+            const selectedLangElement = document.querySelector('.selected-lang');
+            if (selectedLangElement) {
+                selectedLangElement.textContent = langNames[lang];
+            }
+            
+            // Update selected option styling
+            document.querySelectorAll('.language-option').forEach(opt => {
+                opt.classList.remove('selected');
+                if (opt.dataset.lang === lang) {
+                    opt.classList.add('selected');
+                }
+            });
         }
+        
+        // Language selector dropdown functionality (only if elements exist)
+        const languageSelector = document.getElementById('languageSelector');
+        const languageDropdown = document.getElementById('languageDropdown');
+        
+        if (languageSelector && languageDropdown) {
+            languageSelector.addEventListener('click', function(e) {
+                e.stopPropagation();
+                languageSelector.classList.toggle('active');
+                languageDropdown.classList.toggle('active');
+            });
+            
+            document.querySelectorAll('.language-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    const lang = this.dataset.lang;
+                    changeLanguage(lang);
+                    languageSelector.classList.remove('active');
+                    languageDropdown.classList.remove('active');
+                });
+            });
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!languageSelector.contains(e.target) && !languageDropdown.contains(e.target)) {
+                    languageSelector.classList.remove('active');
+                    languageDropdown.classList.remove('active');
+                }
+            });
+        }
+        
+        // Set initial selected language
+        const currentLang = JSON.parse(localStorage.getItem('userSettings') || '{}').language || 'fr';
+        changeLanguage(currentLang);
         
         // Initialize translations on page load
         applyTranslations();
@@ -249,11 +295,57 @@
                     body: JSON.stringify({ email: emailValue })
                 });
                 
-                const data = await response.json();
+                // Check if response is ok
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.error('Response error:', response.status, response.statusText);
+                    console.error('Response body:', text);
+                    // Try to parse error message if it's JSON
+                    try {
+                        const errorData = JSON.parse(text);
+                        throw new Error(errorData.message || t('errorSendingCode'));
+                    } catch (e) {
+                        // Not JSON, use generic error
+                        throw new Error(t('errorSendingCode') + ' (Status: ' + response.status + ')');
+                    }
+                }
+                
+                // Check content type
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text);
+                    
+                    // Check if this is anti-bot protection from hosting provider
+                    if (text.includes('aes.js') || text.includes('slowAES') || text.includes('__test=')) {
+                        throw new Error('Service temporairement indisponible en raison des mesures de sécurité. Veuillez réessayer dans quelques minutes.');
+                    }
+                    
+                    throw new Error(t('errorSendingCode'));
+                }
+                
+                // Try to parse JSON
+                let data;
+                try {
+                    const text = await response.text();
+                    if (!text || text.trim() === '') {
+                        throw new Error('Empty response from server');
+                    }
+                    data = JSON.parse(text);
+                } catch (parseError) {
+                    console.error('JSON parse error:', parseError);
+                    throw new Error(t('errorSendingCode'));
+                }
                 
                 if (data.success) {
                     // Show success message briefly, then hide it when switching steps
                     successMessage.textContent = t('codeSent');
+                    
+                    // In debug mode, show the code directly
+                    if (data.debug_code) {
+                        successMessage.innerHTML = t('codeSent') + '<br><strong style="font-size: 1.5rem; color: #10b981;">Code: ' + data.debug_code + '</strong><br><small style="color: #6b7280;">Mode développement - Le code est affiché ici car l\'email ne peut pas être envoyé en local</small>';
+                    }
+                    
                     successMessage.classList.add('show');
                     
                     // Switch to code step
@@ -269,11 +361,12 @@
                         
                         // Start countdown
                         startCountdown(600); // 10 minutes
-                    }, 1000);
+                    }, data.debug_code ? 5000 : 1000); // Wait longer in debug mode to read the code
                 } else {
                     throw new Error(data.message || t('errorSendingCode'));
                 }
             } catch (error) {
+                console.error('Send code error:', error);
                 errorMessage.textContent = error.message || t('errorSendingCode');
                 errorMessage.classList.add('show');
             } finally {
@@ -324,11 +417,38 @@
                     body: JSON.stringify({ email: emailValue, code: code })
                 });
                 
+                // Check if response is ok
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.error('Response error:', response.status, text);
+                    throw new Error(t('errorVerifying'));
+                }
+                
+                // Check content type
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text);
+                    
+                    // Check if this is anti-bot protection from hosting provider
+                    if (text.includes('aes.js') || text.includes('slowAES') || text.includes('__test=')) {
+                        throw new Error('Service temporairement indisponible en raison des mesures de sécurité. Veuillez réessayer dans quelques minutes.');
+                    }
+                    
+                    throw new Error(t('errorVerifying'));
+                }
+                
+                // Try to parse JSON
                 let data;
                 try {
-                    data = await response.json();
-                } catch (e) {
-                    throw new Error('Réponse invalide du serveur. Vérifiez les logs PHP.');
+                    const text = await response.text();
+                    if (!text || text.trim() === '') {
+                        throw new Error('Empty response from server');
+                    }
+                    data = JSON.parse(text);
+                } catch (parseError) {
+                    console.error('JSON parse error:', parseError);
+                    throw new Error(t('errorVerifying'));
                 }
                 
                 if (data.success) {
@@ -355,7 +475,7 @@
                         }
                         
                         // Redirect to main page
-                        window.location.href = 'Test.html';
+                        window.location.href = 'index.html';
                     }
                 } else {
                     // Show the actual error message from server
@@ -380,6 +500,7 @@
         document.getElementById('resendCodeBtn').addEventListener('click', async function() {
             const resendBtn = this;
             const errorMessage = document.getElementById('errorMessage');
+            const emailValue = document.getElementById('email').value.trim();
             
             errorMessage.classList.remove('show');
             resendBtn.disabled = true;
@@ -395,7 +516,39 @@
                     body: JSON.stringify({ email: emailValue })
                 });
                 
-                const data = await response.json();
+                // Check if response is ok
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.error('Response error:', response.status, text);
+                    throw new Error(t('errorSendingCode'));
+                }
+                
+                // Check content type
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text);
+                    
+                    // Check if this is anti-bot protection from hosting provider
+                    if (text.includes('aes.js') || text.includes('slowAES') || text.includes('__test=')) {
+                        throw new Error('Service temporairement indisponible en raison des mesures de sécurité. Veuillez réessayer dans quelques minutes.');
+                    }
+                    
+                    throw new Error(t('errorSendingCode'));
+                }
+                
+                // Try to parse JSON
+                let data;
+                try {
+                    const text = await response.text();
+                    if (!text || text.trim() === '') {
+                        throw new Error('Empty response from server');
+                    }
+                    data = JSON.parse(text);
+                } catch (parseError) {
+                    console.error('JSON parse error:', parseError);
+                    throw new Error(t('errorSendingCode'));
+                }
                 
                 if (data.success) {
                     // Reset countdown
@@ -409,6 +562,7 @@
                     throw new Error(data.message || t('errorSendingCode'));
                 }
             } catch (error) {
+                console.error('Resend code error:', error);
                 errorMessage.textContent = error.message || t('errorSendingCode');
                 errorMessage.classList.add('show');
             } finally {
@@ -511,7 +665,7 @@
                     }
                     
                     // Redirect to main page
-                    window.location.href = 'Test.html';
+                    window.location.href = 'index.html';
                 } else {
                     throw new Error(data.message || t('errorCompleting'));
                 }

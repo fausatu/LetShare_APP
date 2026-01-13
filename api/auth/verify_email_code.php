@@ -4,12 +4,23 @@
  * Verifies the 6-digit code and logs the user in or creates a new account
  */
 
-require_once '../config.php';
-require_once 'validate_university_email.php';
+// Start output buffering to prevent any output before JSON
+ob_start();
 
-$data = getRequestData();
-$email = trim($data['email'] ?? '');
-$code = trim($data['code'] ?? '');
+// Disable error display to prevent warnings/notices from corrupting JSON
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
+
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/validate_university_email.php';
+
+// Clear any output that might have been generated
+ob_clean();
+
+try {
+    $data = getRequestData();
+    $email = trim($data['email'] ?? '');
+    $code = trim($data['code'] ?? '');
 
 // Clean code: remove all non-digit characters (spaces, dashes, etc.)
 $code = preg_replace('/\D/', '', $code);
@@ -127,8 +138,16 @@ try {
     }
     
 } catch (PDOException $e) {
-    handleDatabaseError($e, 'verify_email_code');
+    handleDatabaseError($e, 'verify_email_code_inner');
 } catch (Exception $e) {
-    handleError($e, 'verify_email_code');
+    handleError($e, 'verify_email_code_inner');
+}
+
+} catch (PDOException $e) {
+    error_log('Verify email code PDO error: ' . $e->getMessage());
+    sendResponse(false, 'Database error. Please try again later.', null, 500);
+} catch (Exception $e) {
+    error_log('Verify email code error: ' . $e->getMessage());
+    sendResponse(false, 'Error verifying. Please try again.', null, 500);
 }
 

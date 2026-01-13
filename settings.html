@@ -2,12 +2,182 @@
 <html lang="en" id="htmlLang">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Settings - LetShare</title>
-    <link rel="stylesheet" href="css/settings.css">
+    <link rel="stylesheet" href="css/settings.css?v=20260112">
+    <style>
+        /* Force l'application des styles personnalisés */
+        .form-select {
+            background: #f0fdf4 !important;
+            border: 2px solid #10b981 !important;
+            border-radius: 1rem !important;
+            color: #047857 !important;
+            appearance: none !important;
+            background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23047857' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3E%3C/svg%3E") !important;
+            background-position: right 0.75rem center !important;
+            background-repeat: no-repeat !important;
+            background-size: 16px 16px !important;
+            padding-right: 2.5rem !important;
+        }
+
+        /* Menu déroulant personnalisé */
+        .custom-select {
+            position: relative;
+            width: 100%;
+            margin-bottom: 0;
+        }
+
+        .select-trigger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 1rem 1.25rem;
+            background: #f0fdf4;
+            border: 2px solid #10b981;
+            border-radius: 1rem;
+            color: #047857;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08);
+            min-height: 56px;
+        }
+
+        .select-trigger:hover {
+            background: #ecfdf5;
+            border-color: #059669;
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .select-trigger.active {
+            background: #ffffff;
+            border-color: #047857;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15), 0 8px 24px rgba(16, 185, 129, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .select-arrow {
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            margin-left: 0.75rem;
+            flex-shrink: 0;
+            opacity: 0.8;
+        }
+
+        .select-trigger.active .select-arrow {
+            transform: rotate(180deg);
+            opacity: 1;
+        }
+
+        .select-text {
+            flex: 1;
+            font-weight: 500;
+            text-align: left;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .select-options {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #ffffff;
+            border: 2px solid #10b981;
+            border-top: none;
+            border-radius: 0 0 1rem 1rem;
+            box-shadow: 0 12px 32px rgba(16, 185, 129, 0.15);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            max-height: 240px;
+            overflow-y: auto;
+            
+            /* Masquer les barres de défilement */
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE et Edge */
+        }
+        
+        .select-options::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+
+        .select-options.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .select-option {
+            padding: 1rem 1.25rem;
+            color: #047857;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border-radius: 0.75rem;
+            margin: 0.25rem 0.5rem;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            min-height: 48px;
+            background: transparent;
+        }
+
+        .select-option::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 0;
+            height: 100%;
+            background: linear-gradient(135deg, #10b981, #059669);
+            transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            z-index: -1;
+            border-radius: 0.75rem;
+        }
+
+        .select-option:hover {
+            background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+            color: #059669;
+            transform: translateX(6px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+        }
+
+        .select-option:hover::before {
+            width: 6px;
+        }
+
+        .select-option.selected {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #ffffff;
+            font-weight: 600;
+            transform: translateX(3px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.25);
+        }
+
+        .select-option.selected::before {
+            width: 100%;
+        }
+
+        .select-option.selected::after {
+            content: '✓';
+            position: absolute;
+            right: 1rem;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #ffffff;
+        }
+    </style>
 </head>
 <body>
     <div class="bg-blob blob-1"></div>
@@ -15,172 +185,179 @@
 
     <div class="container">
         <header>
-            <a href="Test.html" class="logo">
-                
-                <span class="logo-text">LetShare</span>
-                <p>Give, Swap, Grow</p>
-            </a>
-            <a href="profile.html" class="back-btn">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M19 12H5M12 19l-7-7 7-7"></path>
-                </svg>
-                Back to Profile
-            </a>
+            <div class="header-nav">
+                <h1 class="settings-title" data-i18n="settings">Settings</h1>
+                <a href="profile.html" class="back-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"></path>
+                    </svg>
+                    <span data-i18n="back">Back</span>
+                </a>
+            </div>
         </header>
 
         <div class="settings-header">
-            <h1>Settings</h1>
-            <p>Manage your account settings and preferences</p>
+            <p data-i18n="manageAccountSettings">Manage your account settings and preferences</p>
         </div>
 
         <!-- Profile Section -->
         <div class="settings-section">
             <h2 class="section-title">
                 <!-- <span class="section-icon">👤</span> -->
-                Profile
+                <span data-i18n="profileSection">Profile</span>
             </h2>
             
             <div class="form-group">
                 <div class="avatar-upload">
                     <div class="avatar-preview" id="avatarPreview"></div>
                     <div>
-                        <label for="avatarInput" class="avatar-upload-btn">Change Photo</label>
+                        <label for="avatarInput" class="avatar-upload-btn" data-i18n="changePhoto">Change Photo</label>
                         <input type="file" id="avatarInput" accept="image/*" onchange="handleAvatarUpload(event)">
                     </div>
                 </div>
             </div>
 
             <div class="form-group">
-                <label class="form-label">Full Name</label>
-                <input type="text" class="form-input" id="fullName" value="Fausat Akintoyesé" placeholder="Enter your full name">
+                <label class="form-label" data-i18n="fullName">Full Name</label>
+                <input type="text" class="form-input" id="fullName" value="Fausat Akintoyesé" placeholder="Enter your full name" data-i18n-placeholder="enterFullName">
             </div>
 
             <div class="form-group">
-                <label class="form-label">Email</label>
-                <input type="email" class="form-input" id="email" value="fausat@example.com" placeholder="Enter your email">
+                <label class="form-label" data-i18n="emailLabel">Email</label>
+                <input type="email" class="form-input" id="email" value="fausat@example.com" placeholder="Enter your email" data-i18n-placeholder="enterEmail">
             </div>
 
             <div class="form-group">
-                <label class="form-label">Department / Major</label>
-                <select class="form-select" id="department">
-                    <option value="Finance">Finance</option>
-                    <option value="Accounting">Accounting</option>
-                    <option value="Marketing">Marketing</option>
-                    <option value="Management">Management</option>
-                    <option value="Economics">Economics</option>
-                    <option value="Other">Other</option>
-                </select>
+                <label class="form-label" data-i18n="departmentMajor">Department / Major</label>
+                <div class="custom-select" data-value="Finance">
+                    <div class="select-trigger">
+                        <span class="select-text">Finance</span>
+                        <svg class="select-arrow" width="16" height="16" viewBox="0 0 16 16">
+                            <path fill="none" stroke="#047857" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m2 5 6 6 6-6"/>
+                        </svg>
+                    </div>
+                    <div class="select-options">
+                        <div class="select-option selected" data-value="Finance">Finance</div>
+                        <div class="select-option" data-value="Accounting">Accounting</div>
+                        <div class="select-option" data-value="Marketing">Marketing</div>
+                        <div class="select-option" data-value="Management">Management</div>
+                        <div class="select-option" data-value="Economics">Economics</div>
+                        <div class="select-option" data-value="Other">Other</div>
+                    </div>
+                </div>
+                <input type="hidden" id="department" name="department" value="Finance">
             </div>
 
-            <button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
+            <button class="btn btn-primary" onclick="saveProfile()" data-i18n="saveChanges">Save Changes</button>
         </div>
 
         <!-- Notifications Section -->
         <div class="settings-section">
             <h2 class="section-title">
                
-                Notifications
+                <span data-i18n="notificationsSection">Notifications</span>
             </h2>
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <div class="setting-label">New Messages</div>
-                    <div class="setting-description">Get notified when you receive new messages</div>
+                    <div class="setting-label" data-i18n="newMessagesLabel">New Messages</div>
+                    <div class="setting-description" data-i18n="newMessagesDesc">Get notified when you receive new messages</div>
                 </div>
                 <div class="toggle-switch active" onclick="toggleSwitch(this)" data-setting="messages"></div>
             </div>
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <div class="setting-label">New Requests</div>
-                    <div class="setting-description">Get notified when someone requests your items</div>
+                    <div class="setting-label" data-i18n="newRequestsLabel">New Requests</div>
+                    <div class="setting-description" data-i18n="newRequestsDesc">Get notified when someone requests your items</div>
                 </div>
                 <div class="toggle-switch active" onclick="toggleSwitch(this)" data-setting="requests"></div>
             </div>
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <div class="setting-label">Request Accepted</div>
-                    <div class="setting-description">Get notified when your request is accepted</div>
+                    <div class="setting-label" data-i18n="requestAcceptedLabel">Request Accepted</div>
+                    <div class="setting-description" data-i18n="requestAcceptedDesc">Get notified when your request is accepted</div>
                 </div>
                 <div class="toggle-switch active" onclick="toggleSwitch(this)" data-setting="accepted"></div>
             </div>
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <div class="setting-label">New Reviews</div>
-                    <div class="setting-description">Get notified when you receive a new review</div>
+                    <div class="setting-label" data-i18n="newReviewsLabel">New Reviews</div>
+                    <div class="setting-description" data-i18n="newReviewsDesc">Get notified when you receive a new review</div>
                 </div>
                 <div class="toggle-switch active" onclick="toggleSwitch(this)" data-setting="reviews"></div>
             </div>
             
             <div class="setting-item" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb;">
                 <div class="setting-info">
-                    <div class="setting-label">Browser Push Notifications</div>
-                    <div class="setting-description">Receive notifications even when the site is closed</div>
+                    <div class="setting-label" data-i18n="browserPushLabel">Browser Push Notifications</div>
+                    <div class="setting-description" data-i18n="browserPushDesc">Receive notifications even when the site is closed</div>
                 </div>
                 <div class="toggle-switch" id="pushNotificationsToggle" onclick="togglePushNotifications(this)" data-setting="pushNotifications"></div>
-            </div>
-            
-            <div class="setting-item" id="testPushNotificationItem" style="display: none;">
-                <button class="btn btn-secondary" onclick="testPushNotification()" style="width: 100%; margin-top: 0.5rem;">
-                    Send Test Notification
-                </button>
             </div>
         </div>
 
         <!-- Privacy Section -->
         <div class="settings-section">
             <h2 class="section-title">
-                Privacy
+                <span data-i18n="privacySection">Privacy</span>
             </h2>
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <div class="setting-label">Show Department</div>
-                    <div class="setting-description">Display your department on your profile</div>
+                    <div class="setting-label" data-i18n="showDepartmentLabel">Show Department</div>
+                    <div class="setting-description" data-i18n="showDepartmentDesc">Display your department on your profile</div>
                 </div>
                 <div class="toggle-switch" id="showDepartmentToggle" onclick="togglePrivacySetting(this, 'show_department')" data-setting="show_department"></div>
             </div>
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <div class="setting-label">Show Email</div>
-                    <div class="setting-description">Display your email address on your profile</div>
+                    <div class="setting-label" data-i18n="showEmailLabel">Show Email</div>
+                    <div class="setting-description" data-i18n="showEmailDesc">Display your email address on your profile</div>
                 </div>
                 <div class="toggle-switch" id="showEmailToggle" onclick="togglePrivacySetting(this, 'show_email')" data-setting="show_email"></div>
             </div>
+        </div>
+
+        <!-- Conversation Management Section -->
+        <div class="settings-section">
+            <h2 class="section-title">
+                <span data-i18n="conversationSection">Conversation Management</span>
+            </h2>
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <div class="setting-label">Allow Messages from Anyone</div>
-                    <div class="setting-description">Let other students message you even if you haven't exchanged</div>
+                    <div class="setting-label" data-i18n="autoDeleteRejectedLabel">Auto-delete Rejected Requests</div>
+                    <div class="setting-description" data-i18n="autoDeleteRejectedDesc">Automatically delete conversations when your request is rejected or becomes unavailable</div>
                 </div>
-                <div class="toggle-switch" id="allowMessagesToggle" onclick="togglePrivacySetting(this, 'allow_messages_from_anyone')" data-setting="allow_messages_from_anyone"></div>
+                <div class="toggle-switch" id="autoDeleteRejectedToggle" onclick="toggleConversationSetting(this, 'auto_delete_rejected_conversations')" data-setting="auto_delete_rejected_conversations"></div>
             </div>
         </div>
 
         <!-- Preferences Section -->
         <div class="settings-section">
             <h2 class="section-title">
-                Preferences
+                <span data-i18n="preferencesSection">Preferences</span>
             </h2>
 
             <div class="form-group">
-                <label class="form-label">Language</label>
-                <select class="form-select" id="language">
-                    <option value="en">English</option>
-                    <option value="fr">Français</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Date Format</label>
-                <select class="form-select" id="dateFormat">
-                    <option value="mm/dd/yyyy">MM/DD/YYYY</option>
-                    <option value="dd/mm/yyyy">DD/MM/YYYY</option>
-                    <option value="yyyy-mm-dd">YYYY-MM-DD</option>
-                </select>
+                <label class="form-label" data-i18n="languageLabel">Language</label>
+                <div class="custom-select" data-value="en">
+                    <div class="select-trigger">
+                        <span class="select-text" data-i18n="english">English</span>
+                        <svg class="select-arrow" width="16" height="16" viewBox="0 0 16 16">
+                            <path fill="none" stroke="#047857" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m2 5 6 6 6-6"/>
+                        </svg>
+                    </div>
+                    <div class="select-options">
+                        <div class="select-option selected" data-value="en" data-i18n="english">English</div>
+                        <div class="select-option" data-value="fr" data-i18n="french">Français</div>
+                    </div>
+                </div>
+                <input type="hidden" id="language" name="language" value="en">
             </div>
 
             <button class="btn btn-primary" onclick="savePreferences()">Save Preferences</button>
@@ -190,33 +367,33 @@
         <div class="settings-section">
             <h2 class="section-title">
                 
-                Account
+                <span data-i18n="account">Account</span>
             </h2>
 
             <div class="form-group">
-                <label class="form-label">Current Password</label>
-                <input type="password" class="form-input" id="currentPassword" placeholder="Enter current password">
+                <label class="form-label" data-i18n="currentPassword">Current Password</label>
+                <input type="password" class="form-input" id="currentPassword" placeholder="Enter current password" data-i18n-placeholder="enterCurrentPassword">
             </div>
 
             <div class="form-group">
-                <label class="form-label">New Password</label>
-                <input type="password" class="form-input" id="newPassword" placeholder="Enter new password">
+                <label class="form-label" data-i18n="newPassword">New Password</label>
+                <input type="password" class="form-input" id="newPassword" placeholder="Enter new password" data-i18n-placeholder="enterNewPassword">
             </div>
 
             <div class="form-group">
-                <label class="form-label">Confirm New Password</label>
-                <input type="password" class="form-input" id="confirmPassword" placeholder="Confirm new password">
+                <label class="form-label" data-i18n="confirmNewPassword">Confirm New Password</label>
+                <input type="password" class="form-input" id="confirmPassword" placeholder="Confirm new password" data-i18n-placeholder="confirmNewPasswordPlaceholder">
             </div>
 
-            <button class="btn btn-primary" onclick="changePassword()">Change Password</button>
+            <button class="btn btn-primary" onclick="changePassword()" data-i18n="changePasswordBtn">Change Password</button>
             
             <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e5e7eb;">
                 <div class="setting-item">
                     <div class="setting-info">
-                        <div class="setting-label">Logout</div>
-                        <div class="setting-description">Sign out of your account</div>
+                        <div class="setting-label" data-i18n="logout">Logout</div>
+                        <div class="setting-description" data-i18n="signOutDesc">Sign out of your account</div>
                     </div>
-                    <button class="btn btn-secondary" onclick="logout()" style="background: rgba(239, 68, 68, 1); color: #ffffff; border: 1px solid #e5e7eb;">Logout</button>
+                    <button class="btn btn-secondary" onclick="logout()" style="background: rgba(239, 68, 68, 1); color: #ffffff; border: 1px solid #e5e7eb;" data-i18n="logout">Logout</button>
                 </div>
             </div>
         </div>
@@ -224,68 +401,83 @@
         <!-- Data Management -->
         <div class="settings-section">
             <h2 class="section-title">
-                Data Management
+                <span data-i18n="dataManagement">Data Management</span>
             </h2>
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <div class="setting-label">Export My Data</div>
-                    <div class="setting-description">Download a copy of all your data</div>
+                    <div class="setting-label" data-i18n="exportMyData">Export My Data</div>
+                    <div class="setting-description" data-i18n="exportDataDesc">Download a copy of all your data</div>
                 </div>
-                <button class="btn btn-secondary" onclick="exportData()">Export</button>
+                <button class="btn btn-secondary" onclick="exportData()" data-i18n="exportBtn">Export</button>
             </div>
         </div>
 
         <!-- About Section -->
         <div class="settings-section">
             <h2 class="section-title">
-                About
+                <span data-i18n="about">About</span>
             </h2>
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <div class="setting-label">App Version</div>
-                    <div class="setting-description">LetShare v1.0.0</div>
+                    <div class="setting-label" data-i18n="appVersion">App Version</div>
+                    <div class="setting-description" data-i18n="appVersionText">LetShare v1.0.0</div>
                 </div>
             </div>
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <div class="setting-label">Help & Support</div>
-                    <div class="setting-description">Get help or contact support</div>
+                    <div class="setting-label" data-i18n="helpSupport">Help & Support</div>
+                    <div class="setting-description" data-i18n="helpSupportDesc">Get help or contact support</div>
                 </div>
-                <button class="btn btn-link" onclick="window.open('mailto:support@letshare.com')">Contact</button>
+                <button class="btn btn-link" onclick="window.open('mailto:support@letshare.com')" data-i18n="contact">Contact</button>
             </div>
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <div class="setting-label">Terms of Service</div>
-                    <div class="setting-description">Read our terms and conditions</div>
+                    <div class="setting-label" data-i18n="termsAcceptance">Terms Acceptance</div>
+                    <div class="setting-description" id="termsAcceptanceInfo" style="color: #10b981; font-weight: 500;">
+                        <span data-i18n="loadingTermsInfo">Loading...</span>
+                    </div>
                 </div>
-                <button class="btn btn-link" onclick="alert('Terms of Service page')">View</button>
             </div>
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <div class="setting-label">Privacy Policy</div>
-                    <div class="setting-description">Learn how we protect your data</div>
+                    <div class="setting-label" data-i18n="termsOfService">Terms of Service</div>
+                    <div class="setting-description" data-i18n="termsOfServiceDesc">Read our terms and conditions</div>
                 </div>
-                <button class="btn btn-link" onclick="alert('Privacy Policy page')">View</button>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-link" onclick="openTermsInLanguage()" data-i18n="viewBtn">View</button>
+                    <button class="btn btn-link" onclick="downloadTermsAsPDF()" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 0.5rem 1rem; transition: all 0.3s; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(16, 185, 129, 0.3)'" data-i18n="downloadPdfBtn">📄 PDF</button>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <div class="setting-label" data-i18n="privacyPolicy">Privacy Policy</div>
+                    <div class="setting-description" data-i18n="privacyPolicyDesc">Learn how we protect your data</div>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-link" onclick="openPrivacyInLanguage()" data-i18n="viewBtn">View</button>
+                    <button class="btn btn-link" onclick="downloadPrivacyAsPDF()" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 0.5rem 1rem; transition: all 0.3s; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16, 185, 129, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(16, 185, 129, 0.3)'" data-i18n="downloadPdfBtn">📄 PDF</button>
+                </div>
             </div>
         </div>
 
         <!-- Danger Zone -->
         <div class="settings-section danger-zone">
             <h2 class="section-title">
-                Danger Zone
+                <span data-i18n="dangerZone">Danger Zone</span>
             </h2>
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <div class="setting-label">Delete Account</div>
-                    <div class="setting-description">Permanently delete your account and all associated data</div>
+                    <div class="setting-label" data-i18n="deleteAccountLabel">Delete Account</div>
+                    <div class="setting-description" data-i18n="deleteAccountDescFull">Permanently delete your account and all associated data</div>
                 </div>
-                <button class="btn btn-danger" onclick="deleteAccount()">Delete Account</button>
+                <button class="btn btn-danger" onclick="deleteAccount()" data-i18n="deleteAccount">Delete Account</button>
             </div>
         </div>
     </div>
@@ -293,6 +485,7 @@
     <!-- Toast Notification -->
     <div id="toast"></div>
 
+    <script src="js/translations.js"></script>
     <script src="js/api.js"></script>
     <script src="js/push-notifications.js"></script>
     <script src="js/settings.js"></script>

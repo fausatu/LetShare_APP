@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Inscription - LetShare</title>
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/auth.css">
@@ -22,13 +22,19 @@
         
         <!-- Right side - Form -->
         <div class="auth-form-section">
-            <div class="auth-form-box" style="position: relative;">
+            <div class="auth-form-box">
                 <!-- Language Selector -->
-                <div style="position: absolute; top: 20px; right: 20px; z-index: 10;">
-                    <select id="languageSelector" style="padding: 0.5rem 1rem; border: 2px solid #e5e7eb; border-radius: 0.5rem; background: white; color: #1f2937; font-size: 0.875rem; cursor: pointer; outline: none;" onchange="changeLanguage(this.value)">
-                        <option value="fr">Français</option>
-                        <option value="en">English</option>
-                    </select>
+                <div class="language-selector-wrapper">
+                    <div class="language-selector" id="languageSelector">
+                        <span class="selected-lang">Français</span>
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6 9L1 4h10z" fill="#10b981"/>
+                        </svg>
+                    </div>
+                    <div class="language-dropdown" id="languageDropdown">
+                        <div class="language-option" data-lang="fr">Français</div>
+                        <div class="language-option" data-lang="en">English</div>
+                    </div>
                 </div>
                 
                 <div class="auth-form-header">
@@ -65,9 +71,22 @@
                         <input type="text" class="form-input" id="department" data-i18n-placeholder="departmentPlaceholder" placeholder="ex: Finance, Marketing, Management..." required list="departmentSuggestions" autocomplete="off">
                         <datalist id="departmentSuggestions"></datalist>
                         <small style="color: #6b7280; font-size: 0.75rem; margin-top: 0.25rem; display: block;" data-i18n="startTypingSuggestions">Commencez à taper pour voir les suggestions</small>
-                        <button type="submit" class="btn-register" id="registerBtn" data-i18n="registerButton">S'inscrire</button>
- 
                     </div>
+                    
+                    <!-- Terms and Privacy Consent -->
+                    <div class="form-group" style="margin-top: 1.5rem;">
+                        <label style="display: flex; align-items: flex-start; gap: 0.75rem; cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="termsConsent" style="margin-top: 0.25rem; width: 1.125rem; height: 1.125rem; cursor: pointer; accent-color: #10b981;" required>
+                            <span style="color: #4b5563; font-size: 0.875rem; line-height: 1.6;">
+                                <span data-i18n="acceptTermsText">J'ai lu et j'accepte les</span>
+                                <a href="#" onclick="openTermsInLanguage(); return false;" style="color: #10b981; font-weight: 600; text-decoration: underline;" data-i18n="termsOfService">Conditions Générales d'Utilisation</a>
+                                <span data-i18n="andText"> et la </span>
+                                <a href="#" onclick="openPrivacyInLanguage(); return false;" style="color: #10b981; font-weight: 600; text-decoration: underline;" data-i18n="privacyPolicy">Politique de confidentialité</a>
+                            </span>
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="btn-register" id="registerBtn" data-i18n="registerButton" disabled style="opacity: 0.5; cursor: not-allowed;">S'inscrire</button>
                     
                     <div style="margin: 1.5rem 0; text-align: center; color: #9ca3af; font-size: 0.875rem;" data-i18n="or">ou</div>
                     
@@ -132,7 +151,12 @@
                 pleaseEnterValidEmail: "Please enter a valid email address",
                 pleaseUseUniversityEmail: "Please use your university email address",
                 universityEmailDetected: "✓ University email detected",
-                googleAuthSuccess: "✓ Google authentication successful! Please complete your registration by filling in your department."
+                googleAuthSuccess: "✓ Google authentication successful! Please complete your registration by filling in your department.",
+                acceptTermsText: "I have read and accept the",
+                termsOfService: "Terms of Service",
+                andText: " and the ",
+                privacyPolicy: "Privacy Policy",
+                mustAcceptTerms: "You must accept the Terms of Service and Privacy Policy to register"
             },
             fr: {
                 registerTitle: "Créez votre compte",
@@ -164,7 +188,12 @@
                 pleaseEnterValidEmail: "Veuillez entrer une adresse email valide",
                 pleaseUseUniversityEmail: "Veuillez utiliser votre email universitaire",
                 universityEmailDetected: "✓ Email universitaire détecté",
-                googleAuthSuccess: "✓ Authentification Google réussie ! Veuillez compléter votre inscription en remplissant votre département."
+                googleAuthSuccess: "✓ Authentification Google réussie ! Veuillez compléter votre inscription en remplissant votre département.",
+                acceptTermsText: "J'ai lu et j'accepte les",
+                termsOfService: "Conditions Générales d'Utilisation",
+                andText: " et la ",
+                privacyPolicy: "Politique de confidentialité",
+                mustAcceptTerms: "Vous devez accepter les Conditions Générales d'Utilisation et la Politique de confidentialité pour vous inscrire"
             }
         };
         
@@ -221,10 +250,69 @@
             settings.language = lang;
             localStorage.setItem('userSettings', JSON.stringify(settings));
             applyTranslations();
+            
+            // Update selected language text
+            const langNames = { fr: 'Français', en: 'English' };
+            document.querySelector('.selected-lang').textContent = langNames[lang];
+            
+            // Update selected option styling
+            document.querySelectorAll('.language-option').forEach(opt => {
+                opt.classList.remove('selected');
+                if (opt.dataset.lang === lang) {
+                    opt.classList.add('selected');
+                }
+            });
         }
+        
+        // Language selector dropdown functionality
+        const languageSelector = document.getElementById('languageSelector');
+        const languageDropdown = document.getElementById('languageDropdown');
+        
+        languageSelector.addEventListener('click', function(e) {
+            e.stopPropagation();
+            languageSelector.classList.toggle('active');
+            languageDropdown.classList.toggle('active');
+        });
+        
+        document.querySelectorAll('.language-option').forEach(option => {
+            option.addEventListener('click', function() {
+                const lang = this.dataset.lang;
+                changeLanguage(lang);
+                languageSelector.classList.remove('active');
+                languageDropdown.classList.remove('active');
+            });
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!languageSelector.contains(e.target) && !languageDropdown.contains(e.target)) {
+                languageSelector.classList.remove('active');
+                languageDropdown.classList.remove('active');
+            }
+        });
+        
+        // Set initial selected language
+        const currentLang = JSON.parse(localStorage.getItem('userSettings') || '{}').language || 'fr';
+        changeLanguage(currentLang);
         
         // Initialize translations on page load
         applyTranslations();
+        
+        // Terms consent checkbox functionality
+        const termsConsent = document.getElementById('termsConsent');
+        const registerBtn = document.getElementById('registerBtn');
+        
+        termsConsent.addEventListener('change', function() {
+            if (this.checked) {
+                registerBtn.disabled = false;
+                registerBtn.style.opacity = '1';
+                registerBtn.style.cursor = 'pointer';
+            } else {
+                registerBtn.disabled = true;
+                registerBtn.style.opacity = '0.5';
+                registerBtn.style.cursor = 'not-allowed';
+            }
+        });
         
         // Load departments for autocomplete
         async function loadDepartments() {
@@ -343,8 +431,16 @@
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             const department = document.getElementById('department').value.trim();
+            const termsConsent = document.getElementById('termsConsent');
             const registerBtn = document.getElementById('registerBtn');
             const errorMessage = document.getElementById('errorMessage');
+            
+            // Check terms consent
+            if (!termsConsent.checked) {
+                errorMessage.textContent = t('mustAcceptTerms');
+                errorMessage.classList.add('show');
+                return;
+            }
             
             // Check if this is Google OAuth (password field is hidden)
             const passwordGroup = document.querySelector('#password').closest('.form-group');
@@ -379,7 +475,8 @@
                     email: email,
                     password: isGoogleAuth ? '' : password, // Empty password for Google OAuth
                     department: department,
-                    language: language
+                    language: language,
+                    termsAccepted: termsConsent.checked // Send consent status
                 });
                 
                 if (response.success) {
@@ -390,7 +487,7 @@
                         localStorage.setItem('authToken', response.data.token);
                         
                         // Redirect to main page
-                        window.location.href = 'Test.html';
+                        window.location.href = 'index.html';
                     } else {
                         // Email not verified - show message and redirect to login
                         errorMessage.textContent = response.message || t('registerSuccess');

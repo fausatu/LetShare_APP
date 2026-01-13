@@ -4,7 +4,7 @@
  * Validates the reset token and updates the password
  */
 
-require_once '../config.php';
+require_once __DIR__ . '/../config.php';
 
 $data = getRequestData();
 $token = trim($data['token'] ?? '');
@@ -26,13 +26,18 @@ try {
     $stmt = $pdo->prepare("
         SELECT id, email, password_reset_expires_at 
         FROM users 
-        WHERE password_reset_token = ? 
-        AND password_reset_expires_at > NOW()
+        WHERE password_reset_token = ?
     ");
     $stmt->execute([$token]);
     $user = $stmt->fetch();
     
     if (!$user) {
+        sendResponse(false, 'Invalid or expired reset token', null, 400);
+    }
+    
+    // Check if token has expired (compare timestamps)
+    $expiresAt = strtotime($user['password_reset_expires_at']);
+    if ($expiresAt < time()) {
         sendResponse(false, 'Invalid or expired reset token', null, 400);
     }
     

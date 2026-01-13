@@ -69,7 +69,9 @@ try {
                     'lastMessage' => $conv['last_message'] ?? 'No messages yet',
                     'lastUpdate' => $conv['last_message_time'] ?? $conv['updated_at'],
                     'status' => $status,
-                    'unreadCount' => (int)$conv['unread_count']
+                    'unreadCount' => (int)$conv['unread_count'],
+                    'ownerConfirmedAt' => $conv['owner_confirmed_at'] ?? null,
+                    'requesterConfirmedAt' => $conv['requester_confirmed_at'] ?? null
                 ];
             }, $conversations);
             
@@ -223,9 +225,12 @@ try {
             }
             error_log('Requester name: ' . $requesterName);
             
-            $itemTypeText = ($itemType === 'donation') ? 'donation' : 'exchange';
             $notificationTitle = 'New request received';
-            $notificationMessage = $requesterName . ' wants to ' . $itemTypeText . ': ' . $itemTitle;
+            if ($itemType === 'donation') {
+                $notificationMessage = $requesterName . ' is interested in your donation: ' . $itemTitle;
+            } else {
+                $notificationMessage = $requesterName . ' wants to exchange for: ' . $itemTitle;
+            }
             
             error_log('Notification title: ' . $notificationTitle);
             error_log('Notification message: ' . $notificationMessage);

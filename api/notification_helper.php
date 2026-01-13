@@ -79,7 +79,7 @@ function sendPushNotification($pdo, $userId, $title, $message, $itemId = null, $
         }
         
         // Build notification URL - use relative path (works with both localhost and ngrok)
-        $url = '/Test.html';
+        $url = '/index.html';
         if ($itemId) {
             $url .= '?item=' . $itemId;
         } else if ($conversationId) {

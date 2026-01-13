@@ -48,20 +48,20 @@
         }
 
         .container {
-            max-width: 900px;
+            max-width: 700px;
             margin: 0 auto;
-            padding: 2rem;
+            padding: 1.25rem;
             position: relative;
             z-index: 1;
         }
 
         /* Header */
         header {
-            padding: 2rem 0;
+            padding: 1.25rem 0;
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-end;
             align-items: center;
-            margin-bottom: 2rem;
+            margin-bottom: 1.25rem;
         }
 
         .logo {
@@ -83,8 +83,8 @@
         }
 
         .logo-box img {
-            width: 56px;
-            height: 56px;
+            width: 42px;
+            height: 42px;
             object-fit: contain;
             position: relative;
             z-index: 1;
@@ -107,23 +107,54 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            padding: 0.75rem 1.5rem;
-            background: #059669;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 0.75rem;
-            color: rgb(255, 255, 255);
+            padding: 0.5rem 1rem;
+            background: #f9fafb;
+            backdrop-filter: blur(10px);
+            border: 1px solid #e5e7eb;
+            border-radius: 1rem;
+            color: #1f2937;
+            font-weight: 500;
             text-decoration: none;
             transition: all 0.3s;
+        }
+
+        .back-btn:hover {
+            background: #f3f4f6;
+            border-color: #d1d5db;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .settings-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            padding: 0.5rem 0;
+            background: transparent;
+            border: none;
+            border-radius: 1rem;
+            color: #1f2937;
+            margin: 0;
+            order: 1;
+        }
+
+        .back-btn {
+            order: 2;
         }
 
      
 
         .settings-header {
-            margin-bottom: 2rem;
+            margin-bottom: 1.25rem;
         }
 
         .settings-header h1 {
-            font-size: 2.5rem;
+            font-size: 1.75rem;
             margin-bottom: 0.5rem;
             background: linear-gradient(135deg, #10b981, #059669);
             -webkit-background-clip: text;
@@ -132,8 +163,7 @@
         }
 
         .settings-header p {
-            color: #6b7280; /* Gris moyen pour fond blanc */
-            font-size: 1rem;
+            display: none;
         }
 
         /* Settings Sections */
@@ -141,8 +171,8 @@
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 1.5rem;
-            padding: 2rem;
-            margin-bottom: 1.5rem;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
             transition: all 0.3s;
         }
 
@@ -152,9 +182,9 @@
         }
 
         .section-title {
-            font-size: 1.25rem;
+            font-size: 1rem;
             font-weight: 600;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
             color: rgb(3, 114, 35);
             display: flex;
             align-items: center;
@@ -172,9 +202,11 @@
         .setting-item {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            padding: 1rem 0;
+            align-items: flex-start;
+            padding: 0.875rem 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            min-height: 70px;
+            gap: 1rem;
         }
 
         .setting-item:last-child {
@@ -183,26 +215,36 @@
 
         .setting-info {
             flex: 1;
+            padding-right: 0.5rem;
         }
 
         .setting-label {
             font-weight: 500;
             color: rgb(3, 114, 35);
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.375rem;
+            font-size: 0.9375rem;
+            line-height: 1.3;
         }
 
         .setting-description {
-            font-size: 0.875rem;
+            font-size: 0.8125rem;
             color: #6b7280; /* Gris moyen pour fond blanc */
+            line-height: 1.4;
+        }
+
+        /* Assurer que le toggle reste aligné en haut à droite */
+        .toggle-switch {
+            flex-shrink: 0;
+            margin-top: 0.125rem;
         }
 
         /* Toggle Switch */
         .toggle-switch {
             position: relative;
-            width: 50px;
-            height: 26px;
+            width: 44px;
+            height: 22px;
             background: rgb(173 8 8 / 20%);
-            border-radius: 13px;
+            border-radius: 11px;
             cursor: pointer;
             transition: all 0.3s;
         }
@@ -214,28 +256,28 @@
         .toggle-switch::after {
             content: '';
             position: absolute;
-            width: 20px;
-            height: 20px;
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
             background: white;
-            top: 3px;
-            left: 3px;
+            top: 2px;
+            left: 2px;
             transition: all 0.3s;
         }
 
         .toggle-switch.active::after {
-            left: 27px;
+            left: 24px;
         }
 
         /* Input Fields */
         .form-input {
             width: 100%;
-            padding: 0.75rem 1rem;
+            padding: 0.5rem 0.75rem;
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 0.75rem;
             color: rgb(3, 114, 35);
-            font-size: 1rem;
+            font-size: 0.875rem;
             transition: all 0.3s;
         }
 
@@ -249,38 +291,130 @@
             color: #6b7280; /* Gris moyen pour fond blanc */
         }
 
-        .form-select {
+        /* Form Select - Style personnalisé moderne */
+        .form-select,
+        select.form-select,
+        .settings-section .form-select {
             width: 100%;
             padding: 0.75rem 1rem;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 0.75rem;
-            color: rgb(3, 114, 35);
-            font-size: 1rem;
+            background: #f0fdf4 !important; /* Fond vert très clair */
+            border: 2px solid #10b981 !important; /* Bordure verte */
+            border-radius: 1rem !important; /* Plus arrondi */
+            color: #047857 !important; /* Texte vert foncé */
+            font-size: 0.875rem;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1); /* Ombre subtile verte */
+            position: relative;
+            appearance: none !important; /* Supprime le style par défaut du navigateur */
+            background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23047857' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3E%3C/svg%3E") !important; /* Flèche personnalisée verte */
+            background-position: right 0.75rem center !important;
+            background-repeat: no-repeat !important;
+            background-size: 16px 16px !important;
+            padding-right: 2.5rem !important; /* Espace pour la flèche */
         }
 
-        .form-select:focus {
-            outline: none;
-            border-color: #3b82f6;
-            background: rgba(255, 255, 255, 0.15);
+        .form-select:hover,
+        select.form-select:hover,
+        .settings-section .form-select:hover {
+            background-color: #ecfdf5 !important; /* Fond vert plus prononcé au survol */
+            border-color: #059669 !important; /* Bordure vert foncé au survol */
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.15) !important; /* Ombre plus marquée */
+            transform: translateY(-1px); /* Légère élévation */
         }
 
-        .form-select option {
-            background: #fbfbfd;
-            color: rgb(3, 114, 35);
+        .form-select:focus,
+        select.form-select:focus,
+        .settings-section .form-select:focus {
+            outline: none !important;
+            border-color: #047857 !important; /* Bordure vert très foncé au focus */
+            background-color: #ffffff !important; /* Fond blanc au focus */
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2), 0 4px 12px rgba(16, 185, 129, 0.2) !important; /* Double ombre */
+            transform: translateY(-1px); /* Légère élévation */
+        }
+
+        /* Options des menus déroulants - Style moderne */
+        .form-select option,
+        select.form-select option,
+        .settings-section .form-select option {
+            background: #ffffff !important; /* Fond blanc pour les options */
+            color: #047857 !important; /* Texte vert foncé */
+            padding: 0.875rem 1rem !important; /* Plus d'espace généreux */
+            border-radius: 0.75rem; /* Options plus arrondies */
+            margin: 0.125rem 0; /* Espacement entre options */
+            font-weight: 500; /* Texte légèrement plus épais */
+            transition: all 0.2s ease; /* Animation fluide */
+            border: 1px solid transparent; /* Bordure transparente par défaut */
+        }
+
+        .form-select option:hover,
+        select.form-select option:hover,
+        .settings-section .form-select option:hover {
+            background: linear-gradient(135deg, #f0fdf4, #ecfdf5) !important; /* Dégradé vert clair au survol */
+            color: #059669 !important; /* Texte vert au survol */
+            border-color: #10b981; /* Bordure verte au survol */
+            transform: translateX(4px); /* Léger décalage au survol */
+            box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1); /* Ombre subtile */
+        }
+
+        .form-select option:checked,
+        .form-select option:selected,
+        select.form-select option:checked,
+        select.form-select option:selected,
+        .settings-section .form-select option:checked,
+        .settings-section .form-select option:selected {
+            background: linear-gradient(135deg, #10b981, #059669) !important; /* Dégradé vert pour option sélectionnée */
+            color: #ffffff !important; /* Texte blanc pour option sélectionnée */
+            font-weight: 600; /* Texte plus épais pour sélection */
+            border-color: #047857; /* Bordure vert foncé */
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3); /* Halo vert */
         }
 
         /* Buttons */
         .btn {
-            padding: 0.75rem 1.5rem;
+            padding: 0.5rem 1rem;
             border: none;
             border-radius: 0.75rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            min-width: auto;
+            width: auto;
+            display: inline-block;
+        }
+
+        /* Boutons de formulaire (Save Changes, etc.) - largeur automatique */
+        .settings-section > .btn,
+        .form-group .btn,
+        button.btn:not(.setting-item .btn) {
+            width: 100%;
+            max-width: none;
+            padding: 0.75rem 1.5rem;
             font-size: 0.875rem;
+        }
+
+        /* Boutons dans les setting-items */
+        .setting-item .btn {
+            padding: 0.5rem 0.875rem;
+            font-size: 0.8rem;
+            max-width: 100px;
+            width: auto;
+            flex-shrink: 0;
+            text-align: center;
+        }
+
+        /* Boutons d'action spécifiques */
+        .setting-item .btn-secondary {
+            max-width: 85px;
+            padding: 0.45rem 0.75rem;
+        }
+
+        .setting-item .btn-danger {
+            max-width: 140px;
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
         }
 
         .btn-primary {
@@ -335,14 +469,14 @@
         }
 
         .avatar-preview {
-            width: 80px;
-            height: 80px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
             background: linear-gradient(135deg, #10b981, #059669);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
+            font-size: 1.5rem;
             font-weight: 600;
             color: white;
             flex-shrink: 0;
@@ -376,7 +510,7 @@
 
         /* Form Group */
         .form-group {
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
         }
 
         .form-label {
@@ -415,22 +549,609 @@
             transform: translateY(0);
         }
 
+        /* Responsive Design - Mobile First */
+        
+        /* Écrans très petits - Smartphones en mode portrait */
+        @media (max-width: 480px) {
+            .container {
+                padding: 0.75rem;
+                max-width: 100%;
+            }
+
+            .bg-blob {
+                display: none; /* Masquer les animations sur très petits écrans */
+            }
+
+            header {
+                flex-direction: row;
+                justify-content: flex-end;
+                align-items: center;
+                gap: 0;
+                padding: 1rem 0;
+            }
+
+            .logo,
+            .logo *,
+            .logo-text,
+            .logo-text * {
+                display: none !important;
+            }
+
+            .header-nav {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                width: 100%;
+                gap: 0.5rem;
+            }
+
+            .settings-title {
+                font-size: 1.125rem;
+                font-weight: 600;
+                padding: 0.5rem 0;
+                background: transparent;
+                border: none;
+                border-radius: 1rem;
+                color: #1f2937;
+                margin: 0;
+                order: 1;
+            }
+
+            .back-btn {
+                padding: 0.5rem 0.875rem;
+                font-size: 0.875rem;
+                gap: 0.375rem;
+                width: auto;
+                max-width: 150px;
+                order: 2;
+                background: #f9fafb;
+                border: 1px solid #e5e7eb;
+                border-radius: 1rem;
+                color: #1f2937;
+                font-weight: 500;
+            }
+
+            .back-btn svg {
+                width: 16px;
+                height: 16px;
+            }
+
+            .settings-header {
+                text-align: left;
+                margin-bottom: 1rem;
+            }
+
+            .settings-header p {
+                font-size: 0.75rem;
+            }
+
+            .settings-section {
+                padding: 0.875rem;
+                margin-bottom: 0.875rem;
+                border-radius: 1rem;
+            }
+
+            .section-title {
+                font-size: 0.9rem;
+                margin-bottom: 0.875rem;
+            }
+
+            .setting-item {
+                flex-direction: row;
+                align-items: flex-start;
+                gap: 1rem;
+                padding: 0.75rem 0;
+                min-height: 60px;
+            }
+
+            .setting-info {
+                flex: 1;
+                padding-right: 0.5rem;
+            }
+
+            .toggle-switch {
+                flex-shrink: 0;
+                margin-top: 0.25rem;
+            }
+
+            .setting-label {
+                font-size: 0.875rem;
+            }
+
+            .setting-description {
+                font-size: 0.75rem;
+                line-height: 1.4;
+            }
+
+            .form-input, .form-label {
+                font-size: 0.875rem;
+            }
+
+            .form-input {
+                padding: 0.875rem;
+                min-height: 50px;
+            }
+
+            .select-trigger {
+                padding: 0.875rem 1rem;
+                min-height: 50px;
+                font-size: 0.875rem;
+            }
+
+            .select-option {
+                padding: 0.875rem 1rem;
+                font-size: 0.875rem;
+                min-height: 44px;
+            }
+
+            .btn {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+                width: auto;
+                max-width: fit-content;
+                margin: 0.5rem auto 0;
+                display: block;
+            }
+
+            /* Boutons de formulaire plus compacts sur mobile */
+            .settings-section > .btn,
+            .form-group .btn {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+                max-width: fit-content;
+                width: auto;
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            /* Boutons dans setting-items sur mobile */
+            .setting-item .btn {
+                width: auto !important;
+                max-width: 90px;
+                padding: 0.5rem 0.625rem;
+                font-size: 0.75rem;
+                margin-top: 0;
+            }
+
+            .setting-item .btn-danger {
+                max-width: 120px;
+                padding: 0.5rem 0.75rem;
+                font-size: 0.75rem;
+            }
+
+            .avatar-upload {
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+            }
+
+            .avatar-preview {
+                width: 80px;
+                height: 80px;
+                align-self: center;
+            }
+
+            .toggle-switch {
+                transform: scale(0.9);
+            }
+        }
+
+        /* Écrans petits - Smartphones et petites tablettes */
         @media (max-width: 768px) {
             .container {
+                padding: 0.875rem;
+                max-width: 100%;
+            }
+
+            .blob-1, .blob-2 {
+                width: 300px;
+                height: 300px;
+                opacity: 0.05;
+            }
+
+            header {
+                flex-wrap: wrap;
+                gap: 0.75rem;
+            }
+
+            .logo-text h1 {
+                font-size: 2rem;
+            }
+
+            .settings-header h1 {
+                font-size: 1.5rem;
+            }
+
+            .settings-section {
                 padding: 1rem;
+            }
+
+            .setting-item {
+                flex-direction: row;
+                align-items: flex-start;
+                gap: 1rem;
+                padding: 0.875rem 0;
+                min-height: 65px;
+            }
+
+            .setting-info {
+                flex: 1;
+                padding-right: 0.75rem;
+            }
+
+            .setting-label {
+                font-size: 0.9rem;
+                margin-bottom: 0.25rem;
+            }
+
+            .setting-description {
+                font-size: 0.8rem;
+                line-height: 1.3;
+            }
+
+            .toggle-switch {
+                flex-shrink: 0;
+                margin-top: 0.125rem;
+            }
+
+            .back-btn {
+                padding: 0.5rem 0.875rem;
+                font-size: 0.875rem;
+                gap: 0.375rem;
+                min-width: auto;
+                width: auto;
+                max-width: 160px;
+            }
+
+            .back-btn svg {
+                width: 16px;
+                height: 16px;
+            }
+
+            .form-group {
+                margin-bottom: 1rem;
+            }
+
+            /* Boutons de formulaire sur smartphones */
+            .settings-section > .btn,
+            .form-group .btn {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+                max-width: fit-content;
+                width: auto;
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            .avatar-upload {
+                flex-direction: column;
+                align-items: center;
+                gap: 1rem;
+            }
+
+            .select-options {
+                max-height: 200px;
+            }
+        }
+
+        /* Écrans moyens - Tablettes en mode portrait */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .container {
+                max-width: 600px;
+                padding: 1rem;
+            }
+
+            .blob-1, .blob-2 {
+                width: 350px;
+                height: 350px;
+            }
+
+            .settings-section {
+                padding: 1.25rem;
+            }
+
+            .setting-item {
+                flex-direction: row;
+                align-items: center;
+                gap: 1rem;
+            }
+
+            .select-trigger {
+                min-height: 52px;
+            }
+
+            .select-option {
+                min-height: 46px;
+            }
+
+            /* Boutons dans setting-items sur tablette */
+            .setting-item .btn {
+                max-width: 95px;
+                padding: 0.5rem 0.75rem;
+                font-size: 0.8rem;
+            }
+
+            .setting-item .btn-secondary {
+                max-width: 80px;
+            }
+
+            .setting-item .btn-danger {
+                max-width: 130px;
+                padding: 0.5rem 0.875rem;
+            }
+        }
+
+        /* Écrans larges - Desktops et tablettes en mode paysage */
+        @media (min-width: 1025px) {
+            .container {
+                max-width: 700px;
+                padding: 1.5rem;
+            }
+
+            .settings-section:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            }
+
+            .select-trigger:hover {
+                transform: translateY(-2px);
+            }
+
+            .select-trigger.active {
+                transform: translateY(-1px);
+            }
+        }
+
+        /* Écrans très larges - Grands moniteurs */
+        @media (min-width: 1440px) {
+            .container {
+                max-width: 800px;
+                padding: 2rem;
+            }
+
+            .blob-1, .blob-2 {
+                width: 500px;
+                height: 500px;
             }
 
             .settings-header h1 {
                 font-size: 2rem;
             }
 
-            .settings-section {
-                padding: 1.5rem;
+            .section-title {
+                font-size: 1.125rem;
             }
 
-            .setting-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 1rem;
+            .setting-label {
+                font-size: 1rem;
+            }
+        }
+
+        /* Mode paysage pour les petits écrans */
+        @media (max-height: 600px) and (orientation: landscape) {
+            header {
+                padding: 0.75rem 0;
+            }
+
+            .settings-header {
+                margin-bottom: 0.875rem;
+            }
+
+            .settings-section {
+                margin-bottom: 0.75rem;
+            }
+
+            .bg-blob {
+                opacity: 0.03;
+            }
+        }
+
+        /* Préférences d'accessibilité */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+
+            .bg-blob {
+                animation: none;
+            }
+        }
+
+        /* Styles personnalisés pour les menus déroulants */
+        .form-select {
+            background: #f0fdf4 !important;
+            border: 2px solid #10b981 !important;
+            border-radius: 1rem !important;
+            color: #047857 !important;
+            appearance: none !important;
+            background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23047857' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3E%3C/svg%3E") !important;
+            background-position: right 0.75rem center !important;
+            background-repeat: no-repeat !important;
+            background-size: 16px 16px !important;
+            padding-right: 2.5rem !important;
+        }
+
+        /* Menu déroulant personnalisé */
+        .custom-select {
+            position: relative;
+            width: 100%;
+            margin-bottom: 0;
+        }
+
+        .select-trigger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 1rem 1.25rem;
+            background: #f0fdf4;
+            border: 2px solid #10b981;
+            border-radius: 1rem;
+            color: #047857;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08);
+            min-height: 56px;
+        }
+
+        .select-trigger:hover {
+            background: #ecfdf5;
+            border-color: #059669;
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .select-trigger.active {
+            background: #ffffff;
+            border-color: #047857;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15), 0 8px 24px rgba(16, 185, 129, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .select-text {
+            flex: 1;
+            font-weight: 500;
+            text-align: left;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .select-arrow {
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            margin-left: 0.75rem;
+            flex-shrink: 0;
+            opacity: 0.8;
+        }
+
+        .select-trigger.active .select-arrow {
+            transform: rotate(180deg);
+            opacity: 1;
+        }
+
+        .select-options {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #ffffff;
+            border: 2px solid #10b981;
+            border-top: none;
+            border-radius: 0 0 1rem 1rem;
+            box-shadow: 0 12px 32px rgba(16, 185, 129, 0.15);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            max-height: 240px;
+            overflow-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        
+        .select-options::-webkit-scrollbar {
+            display: none;
+        }
+
+        .select-options.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .select-option {
+            padding: 1rem 1.25rem;
+            color: #047857;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border-radius: 0.75rem;
+            margin: 0.25rem 0.5rem;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            min-height: 48px;
+            background: transparent;
+        }
+
+        .select-option::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 0;
+            height: 100%;
+            background: linear-gradient(135deg, #10b981, #059669);
+            transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            z-index: -1;
+            border-radius: 0.75rem;
+        }
+
+        .select-option:hover {
+            background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+            color: #059669;
+            transform: translateX(6px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+        }
+
+        .select-option:hover::before {
+            width: 6px;
+        }
+
+        .select-option.selected {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #ffffff;
+            font-weight: 600;
+            transform: translateX(3px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.25);
+        }
+
+        .select-option.selected::before {
+            width: 100%;
+        }
+
+        .select-option.selected::after {
+            content: '✓';
+            position: absolute;
+            right: 1rem;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        /* Responsivité des menus personnalisés */
+        @media (max-width: 480px) {
+            .select-options {
+                left: -0.5rem;
+                right: -0.5rem;
+                box-shadow: 0 8px 25px rgba(16, 185, 129, 0.2);
+                max-height: 180px;
+            }
+
+            .select-option {
+                margin: 0.125rem 0.25rem;
+                padding: 0.75rem 1rem;
+            }
+
+            .select-option.selected::after {
+                right: 0.75rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .select-options {
+                max-height: 200px;
+            }
+
+            .select-option {
+                padding: 0.875rem 1rem;
             }
         }

@@ -125,7 +125,7 @@ try {
         }
         
         // Redirect to main page
-        header('Location: ../../../Test.html');
+        header('Location: ../../../index.html');
         exit();
     }
     

@@ -12,6 +12,13 @@ body {
     overflow-x: hidden;
 }
 
+/* Prevent scrolling when modal is open */
+body.modal-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+}
+
 /* Animated Background */
 .bg-blob {
     position: fixed;
@@ -24,8 +31,8 @@ body {
 .blob-1 {
     top: 10%;
     left: 10%;
-    width: 400px;
-    height: 400px;
+    width: 300px;
+    height: 300px;
     background: #10b981; /* Vert émeraude */
     animation-delay: 0s;
     opacity: 0.08; /* Plus subtil sur fond blanc */
@@ -34,8 +41,8 @@ body {
 .blob-2 {
     bottom: 10%;
     right: 10%;
-    width: 400px;
-    height: 400px;
+    width: 300px;
+    height: 300px;
     background: #059669; /* Vert foncé */
     animation-delay: 5s;
     opacity: 0.08; /* Plus subtil sur fond blanc */
@@ -48,19 +55,19 @@ body {
 }
 
 .container {
-    max-width: 1400px;
+    max-width: 1100px;
     margin: 0 auto;
-    padding: 0 2rem;
+    padding: 0 1.5rem;
     position: relative;
     z-index: 1;
 }
 
 /* Header */
 header {
-    padding: 3rem 0 2rem;
+    padding: 1rem 0 0.75rem;
     display: flex;
     justify-content: space-between;
-    /* align-items: flex-start; */
+    align-items: center;
 }
 
 .logo {
@@ -107,7 +114,7 @@ header {
 }
 
 .logo-text h1 {
-    font-size: 5rem;
+    font-size: 1.75rem;
     font-weight: bold;
     background: linear-gradient(135deg, #10b981, #059669);
     -webkit-background-clip: text;
@@ -349,7 +356,7 @@ header {
 
 /* Hero Section */
 .hero {
-    margin: 3rem 0;
+    margin: 2rem 0 1.5rem;
     display: flex;
     align-items: center;
     flex-direction: column;
@@ -357,26 +364,28 @@ header {
 }
 
 .hero h2 {
-    font-size: 5rem;
+    font-size: 2.25rem;
     font-weight: bold;
-    line-height: 1.1;
-    margin-bottom: 3rem;
+    line-height: 1.3;
+    margin-bottom: 1.5rem;
     background: linear-gradient(135deg, #1f2937, #10b981, #059669);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    text-align: center;
 }
 
 .hero p {
-    font-size: 1.25rem;
+    font-size: 1.125rem;
     color: #6b7280; /* Gris moyen pour fond blanc */
-    margin-bottom: 3rem;
+    margin-bottom: 2rem;
 }
 
 /* Search Bar */
 .search-container {
     position: relative;
-    max-width: 800px;
+    max-width: 650px;
+    width: 100%;
 }
 
 .search-glow {
@@ -395,11 +404,11 @@ header {
     background: #f9fafb; /* Fond gris très clair */
     backdrop-filter: blur(20px);
     border: 1px solid #e5e7eb; /* Bordure gris clair */
-    border-radius: 2rem;
-    padding: 0.5rem;
+    border-radius: 1.5rem;
+    padding: 0.4rem;
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
     z-index: 1; /* Above the glow */
 }
 
@@ -409,8 +418,8 @@ header {
     border: none;
     outline: none;
     color: #1f2937; /* Texte gris foncé */
-    font-size: 1.125rem;
-    padding: 0 1rem;
+    font-size: 0.95rem;
+    padding: 0 0.75rem;
 }
 
 .search-input::placeholder {
@@ -418,12 +427,13 @@ header {
 }
 
 .btn-search {
-    padding: 1rem 2rem;
+    padding: 0.7rem 1.5rem;
     background: linear-gradient(135deg, #10b981, #059669);
     border: none;
-    border-radius: 1.5rem;
+    border-radius: 1.25rem;
     color: white;
     font-weight: 600;
+    font-size: 0.9rem;
     cursor: pointer;
     transition: all 0.3s;
     display: flex;
@@ -437,7 +447,7 @@ header {
 }
 
 .btn-filters {
-    padding: 0.75rem 1rem;
+    padding: 0.6rem 0.8rem;
     background: #f3f4f6;
     border: 1px solid #e5e7eb;
     border-radius: 1rem;
@@ -927,29 +937,42 @@ header {
 
 .modal-content {
     position: relative;
-    max-width: 500px;
+    max-width: 400px;
     width: 100%;
     background: #ffffff; /* Fond blanc pour les modals */
     backdrop-filter: blur(20px);
     border: 1px solid #e5e7eb; /* Bordure gris clair */
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); /* Ombre */
-    border-radius: 2rem;
-    padding: 1.5rem;
+    border-radius: 1.25rem;
+    padding: 1rem;
+}
+
+/* Hide scrollbars but keep functionality if needed */
+.modal-content::-webkit-scrollbar {
+    display: none;
+}
+
+.modal-content {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
 }
 
 .modal-close {
     position: absolute;
-    top: 1.5rem;
-    right: 1.5rem;
-    width: 40px;
-    height: 40px;
+    top: 1rem;
+    right: 1rem;
+    width: 32px;
+    height: 32px;
     background: #f9fafb; /* Fond gris très clair */
     border: 1px solid #e5e7eb; /* Bordure gris clair */
     border-radius: 50%;
     color: #1f2937; /* Texte gris foncé */
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     cursor: pointer;
     transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .modal-close:hover {
@@ -967,10 +990,10 @@ header {
 .modal-image-carousel {
     position: relative;
     width: 100%;
-    max-width: 400px;
-    height: 300px;
-    margin: 0 auto 1.5rem;
-    border-radius: 1.5rem;
+    max-width: 300px;
+    height: 220px;
+    margin: 0 auto 1rem;
+    border-radius: 1rem;
     overflow: hidden;
     background: #f9fafb;
     border: 1px solid #e5e7eb;
@@ -1008,13 +1031,13 @@ header {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    width: 40px;
-    height: 40px;
+    width: 28px;
+    height: 28px;
     background: rgba(255, 255, 255, 0.9);
     border: 1px solid #e5e7eb;
     border-radius: 50%;
     color: #1f2937;
-    font-size: 1.5rem;
+    font-size: 1.1rem;
     font-weight: bold;
     cursor: pointer;
     display: flex;
@@ -1065,18 +1088,18 @@ header {
 }
 
 .modal-image {
-    width: 150px;
-    height: 150px;
+    width: 120px;
+    height: 120px;
     object-fit: cover;
-    border-radius: 1.5rem;
+    border-radius: 1.25rem;
     margin: 0 auto 1rem;
     display: block;
-    border: 3px solid #e5e7eb; /* Bordure gris clair */
+    border: 2px solid #e5e7eb; /* Bordure gris clair */
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .modal-title {
-    font-size: 1.5rem;
+    font-size: 1.125rem;
     font-weight: bold;
     margin-bottom: 0.5rem;
     color: #1f2937; /* Texte gris foncé */
@@ -1084,51 +1107,53 @@ header {
 
 .modal-desc {
     color: #6b7280; /* Gris moyen pour fond blanc */
+    font-size: 0.9rem;
 }
 
 .modal-info {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-    margin-bottom: 1.5rem;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
 }
 
 .info-box {
-    padding: 0.75rem;
+    padding: 0.5rem;
     background: #f9fafb; /* Fond gris très clair */
-    border-radius: 1rem;
+    border-radius: 0.75rem;
     border: 1px solid #e5e7eb; /* Bordure gris clair */
 }
 
 .info-label {
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     color: #6b7280; /* Gris moyen pour fond blanc */
     margin-bottom: 0.25rem;
 }
 
 .info-value {
     font-weight: 500;
+    font-size: 0.9rem;
 }
 
 .user-profile-box {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem;
+    gap: 0.5rem;
+    padding: 0.5rem;
     background: #f9fafb; /* Fond gris très clair */
-    border-radius: 1rem;
+    border-radius: 0.75rem;
     border: 1px solid #e5e7eb; /* Bordure gris clair */
 }
 
 .modal-user-avatar {
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     flex-shrink: 0;
     overflow: hidden; /* avoid image overflow */
 }
@@ -1146,7 +1171,7 @@ header {
 }
 
 .modal-user-name {
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 600;
     margin-bottom: 0.25rem;
 }
@@ -1165,7 +1190,7 @@ header {
 
 .star {
     color: #fbbf24;
-    font-size: 1rem;
+    font-size: 0.85rem;
 }
 
 .star.empty {
@@ -1175,10 +1200,11 @@ header {
 .rating-value {
     font-weight: 600;
     color: #fbbf24;
+    font-size: 0.9rem;
 }
 
 .reviews-count {
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     color: #6b7280; /* Gris moyen pour fond blanc */
     cursor: pointer;
     text-decoration: underline;
@@ -2186,24 +2212,63 @@ header {
 .form-select {
     width: 100%;
     padding: 0.75rem 1rem;
-    background: #f9fafb; /* Fond gris très clair */
-    border: 1px solid #e5e7eb; /* Bordure gris clair */
-    border-radius: 1rem;
-    color: #1f2937; /* Texte gris foncé */
+    background: #f0fdf4; /* Fond vert très clair */
+    border: 2px solid #10b981; /* Bordure verte */
+    border-radius: 1rem; /* Plus arrondi */
+    color: #047857; /* Texte vert foncé */
     font-size: 1rem;
     outline: none;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1); /* Ombre subtile verte */
+    appearance: none; /* Supprime le style par défaut du navigateur */
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23047857' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3E%3C/svg%3E"); /* Flèche personnalisée verte */
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 16px 16px;
+    padding-right: 2.5rem; /* Espace pour la flèche */
+}
+
+.form-select:hover {
+    background-color: #ecfdf5; /* Fond vert plus prononcé au survol */
+    border-color: #059669; /* Bordure vert foncé au survol */
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.15); /* Ombre plus marquée */
+    transform: translateY(-1px); /* Légère élévation */
 }
 
 .form-select:focus {
-    background: #ffffff; /* Fond blanc au focus */
-    border-color: #10b981; /* Bordure verte au focus */
+    background-color: #ffffff; /* Fond blanc au focus */
+    border-color: #047857; /* Bordure vert très foncé au focus */
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2), 0 4px 12px rgba(16, 185, 129, 0.2); /* Double ombre au focus */
+    transform: translateY(-2px); /* Plus d'élévation au focus */
 }
 
 .form-select option {
-    background: #ffffff; /* Fond blanc */
-    color: #1f2937; /* Texte gris foncé */
+    background: #ffffff; /* Fond blanc pour les options */
+    color: #047857; /* Texte vert foncé */
+    padding: 0.875rem 1rem; /* Plus d'espace généreux */
+    border-radius: 0.75rem; /* Options plus arrondies */
+    margin: 0.125rem 0; /* Espacement entre options */
+    font-weight: 500; /* Texte légèrement plus épais */
+    transition: all 0.2s ease; /* Animation fluide */
+    border: 1px solid transparent; /* Bordure transparente par défaut */
+}
+
+.form-select option:hover {
+    background: linear-gradient(135deg, #f0fdf4, #ecfdf5); /* Dégradé vert clair au survol */
+    color: #059669; /* Texte vert au survol */
+    border-color: #10b981; /* Bordure verte au survol */
+    transform: translateX(4px); /* Léger décalage au survol */
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1); /* Ombre subtile */
+}
+
+.form-select option:checked,
+.form-select option:selected {
+    background: linear-gradient(135deg, #10b981, #059669); /* Dégradé vert pour option sélectionnée */
+    color: #ffffff; /* Texte blanc pour option sélectionnée */
+    font-weight: 600; /* Texte plus épais pour sélection */
+    border-color: #047857; /* Bordure vert foncé */
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3); /* Halo vert */
 }
 
 .form-textarea {
@@ -2312,16 +2377,460 @@ header {
     font-size: 1.5rem;
 }
 
+/* ============================================
+   RESPONSIVE DESIGN - MEDIA QUERIES
+   ============================================ */
+
+/* Tablet and below (768px) */
 @media (max-width: 768px) {
+    /* Container */
+    .container {
+        padding: 0 1rem;
+    }
+    
+    /* Header */
+    header {
+        padding: 0.75rem 0;
+        flex-direction: row;
+        gap: 0.5rem;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .logo-text h1 {
+        font-size: 1.5rem;
+    }
+    
+    .logo-text p {
+        font-size: 0.7rem;
+    }
+    
+    .header-right {
+        width: auto;
+        justify-content: flex-end;
+        flex-wrap: nowrap;
+        gap: 0.5rem;
+    }
+    
+    .users-avatars {
+        display: none !important;
+    }
+    
+    .users-count {
+        display: none !important;
+    }
+    
+    .btn-register, .btn-login-header {
+        padding: 0.4rem 0.75rem !important;
+        font-size: 0.8rem !important;
+        white-space: nowrap;
+    }
+    
+    /* Hero section */
+    .hero {
+        margin: 2rem 0 1rem 0;
+        padding-top: 1rem;
+    }
+    
+    .hero h2 {
+        font-size: 1.5rem;
+        line-height: 1.3;
+    }
+    
+    .hero p {
+        font-size: 0.95rem;
+    }
+    
+    /* Search bar */
+    .search-container {
+        max-width: 100%;
+    }
+    
+    .search-bar {
+        flex-direction: column;
+        padding: 0.75rem;
+        gap: 0.5rem;
+    }
+    
+    .search-bar svg {
+        display: none;
+    }
+    
+    .search-input {
+        font-size: 0.9rem;
+        padding: 0.5rem;
+    }
+    
+    .btn-search {
+        width: 100%;
+        justify-content: center;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+    
+    .btn-search span {
+        font-size: 0.8rem;
+    }
+    
+    .btn-filters {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+    }
+    
+    /* Grid */
     .grid {
         grid-template-columns: 1fr;
+        gap: 1rem;
     }
+    
     .card.large, .card.tall {
         grid-column: span 1;
         grid-row: span 1;
     }
+    
+    /* Cards */
+    .card {
+        padding: 0.75rem;
+    }
+    
+    .card-image {
+        height: 180px;
+        width: 60px;
+        height: 60px;
+        top: 1rem;
+        right: 1rem;
+    }
+    
+    .card-title {
+        font-size: 1rem;
+    }
+    
+    .card-desc {
+        font-size: 0.85rem;
+    }
+    
+    .card-user {
+        font-size: 0.85rem;
+    }
+    
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 0.75rem;
+    }
+    
+    /* Modals */
+    .modal {
+        padding: 1rem;
+    }
+    
+    .modal-content {
+        max-width: 95%;
+        padding: 0.875rem;
+    }
+    
+    .modal-close {
+        top: 0.75rem;
+        right: 0.75rem;
+    }
+    
+    .modal-image-carousel {
+        max-width: 100%;
+        height: 200px;
+    }
+    
+    .modal-image-carousel .carousel-image img {
+        object-fit: contain;
+        background: #f9fafb;
+    }
+    
+    /* Reviews Modal */
+    .reviews-content {
+        padding: 1.25rem;
+        max-width: 95%;
+    }
+    
+    .reviews-content h2 {
+        font-size: 1.35rem;
+        margin-bottom: 1rem;
+    }
+    
+    .review-item {
+        padding: 1rem;
+        margin-bottom: 0.875rem;
+    }
+    
+    .review-header {
+        margin-bottom: 0.625rem;
+        padding-bottom: 0.625rem;
+    }
+    
+    .review-user {
+        font-size: 0.9rem;
+        gap: 0.5rem;
+    }
+    
+    .review-date {
+        font-size: 0.75rem;
+    }
+    
+    .review-stars {
+        gap: 0.25rem;
+        margin-bottom: 0.625rem;
+    }
+    
+    .review-stars .star {
+        font-size: 1rem;
+    }
+    
+    .review-text {
+        font-size: 0.85rem;
+        line-height: 1.5;
+    }
+    
+    /* Buttons */
+    .btn-add {
+        width: 50px;
+        height: 50px;
+        bottom: 1rem;
+        right: 1rem;
+    }
+    
+    .btn-add span {
+        display: none;
+    }
+    
+    .btn-add svg {
+        margin: 0;
+    }
+    
+    .btn-join-community {
+        padding: 0.6rem 1.25rem;
+        font-size: 0.9rem;
+    }
+}
+
+/* Mobile (480px and below) */
+@media (max-width: 480px) {
+    /* Container */
+    .container {
+        padding: 0 0.75rem;
+    }
+    
+    /* Header */
+    header {
+        padding: 0.5rem 0;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .logo-text h1 {
+        font-size: 1.25rem;
+    }
+    
+    .logo-text p {
+        font-size: 0.65rem;
+    }
+    
+    .header-right {
+        gap: 0.375rem;
+    }
+    
+    .btn-register, .btn-login-header {
+        padding: 0.35rem 0.6rem !important;
+        font-size: 0.75rem !important;
+        border-radius: 0.5rem !important;
+    }
+    
+    /* Hero */
     .hero h2 {
-        font-size: 3rem;
+        font-size: 1.25rem;
+    }
+    
+    .hero p {
+        font-size: 0.875rem;
+    }
+    
+    /* Search */
+    .search-bar {
+        padding: 0.5rem;
+    }
+    
+    .search-input {
+        font-size: 0.85rem;
+    }
+    
+    .btn-search {
+        padding: 0.45rem 0.65rem;
+        font-size: 0.75rem;
+    }
+    
+    .btn-search span {
+        font-size: 0.75rem;
+    }
+    
+    .btn-search svg {
+        width: 16px;
+        height: 16px;
+    }
+    
+    /* Cards */
+    .card {
+        padding: 0.625rem;
+    }
+    
+    .card-image {
+        width: 50px;
+        height: 50px;
+        top: 0.75rem;
+        right: 0.75rem;
+    }
+    
+    .card-title {
+        font-size: 0.95rem;
+    }
+    
+    .card-desc {
+        font-size: 0.8rem;
+    }
+    
+    .user-avatar {
+        width: 28px;
+        height: 28px;
+        font-size: 0.7rem;
+    }
+    
+    .card-badge {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    /* Modal */
+    .modal-content {
+        max-width: 98%;
+        padding: 0.75rem;
+    }
+    
+    .modal-title {
+        font-size: 1rem;
+    }
+    
+    .modal-desc {
+        font-size: 0.85rem;
+    }
+    
+    .modal-image-carousel {
+        height: 160px;
+        max-width: 100%;
+    }
+    
+    .modal-image-carousel .carousel-image img {
+        object-fit: contain;
+        background: #f9fafb;
+    }
+    
+    /* Reviews Modal */
+    .reviews-modal {
+        padding: 0.75rem;
+    }
+    
+    .reviews-content {
+        padding: 1rem;
+        max-width: 100%;
+        border-radius: 1.25rem;
+    }
+    
+    .reviews-content h2 {
+        font-size: 1.15rem;
+        margin-bottom: 0.875rem;
+    }
+    
+    .reviews-modal .modal-close {
+        top: 0.875rem;
+        right: 0.875rem;
+        width: 30px;
+        height: 30px;
+        font-size: 1rem;
+    }
+    
+    .review-item {
+        padding: 0.875rem;
+        margin-bottom: 0.75rem;
+        border-radius: 0.75rem;
+    }
+    
+    .review-header {
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.5rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.375rem;
+    }
+    
+    .review-user {
+        font-size: 0.85rem;
+        gap: 0.375rem;
+    }
+    
+    .review-date {
+        font-size: 0.7rem;
+    }
+    
+    .review-stars {
+        gap: 0.2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .review-stars .star {
+        font-size: 0.95rem;
+    }
+    
+    .review-text {
+        font-size: 0.8rem;
+        line-height: 1.5;
+        padding-top: 0.375rem;
+    }
+    
+    /* Buttons */
+    .btn-add {
+        width: 45px;
+        height: 45px;
+    }
+    
+    .btn-join-community {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.7rem;
+        position: fixed;
+        bottom: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 100;
+        width: auto;
+        max-width: 95%;
+        text-align: center;
+        white-space: normal;
+        line-height: 1.2;
+    }
+    
+    .btn-mark-all-read {
+        padding: 0.375rem 0.75rem !important;
+        font-size: 0.75rem !important;
+        margin-right: 10px !important;
+    }
+    
+    .btn-notifications,
+    .btn-messages,
+    .btn-profile {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .btn-notifications svg,
+    .btn-messages svg {
+        width: 22px;
+        height: 22px;
     }
 }
 

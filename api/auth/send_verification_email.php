@@ -5,12 +5,9 @@
  */
 
 require_once '../config.php';
+require_once '../../lib/simple_smtp.php';
 
 function sendVerificationEmail($email, $name, $token) {
-    // Note: SMTP configuration is optional for now
-    // In production, you should configure SMTP settings in config.php
-    // For development, mail() function will be used (requires sendmail configuration)
-    
     $verificationUrl = APP_BASE_URL . '/api/auth/verify_email.php?token=' . urlencode($token);
     
     $subject = 'Verify your email address - LetShare';
@@ -55,7 +52,7 @@ function sendVerificationEmail($email, $name, $token) {
                                 </table>
                                 
                                 <p style='color: #1f2937; font-size: 14px; line-height: 1.6; margin: 30px 0 20px 0; text-align: center; font-weight: 600;'>Or copy and paste this link into your browser:</p>
-                                <p style='word-break: break-all; color: #059669; font-size: 12px; line-height: 1.6; margin: 0 0 30px 0; padding: 15px; background-color: #ffffff; border-radius: 6px; border: 2px solid #059669; font-family: monospace, "Courier New", Courier;'>" . htmlspecialchars($verificationUrl) . "</p>
+                                <p style='word-break: break-all; color: #059669; font-size: 12px; line-height: 1.6; margin: 0 0 30px 0; padding: 15px; background-color: #ffffff; border-radius: 6px; border: 2px solid #059669; font-family: monospace, \"Courier New\", Courier;'>" . htmlspecialchars($verificationUrl) . "</p>
                                 
                                 <p style='color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0 0 10px 0;'>This link will expire in 24 hours.</p>
                                 <p style='color: #9ca3af; font-size: 14px; line-height: 1.6; margin: 0;'>If you didn't create an account on LetShare, please ignore this email.</p>
@@ -75,19 +72,21 @@ function sendVerificationEmail($email, $name, $token) {
     </html>
     ";
     
-    // Use PHPMailer if available, otherwise use mail() function
-    // For now, we'll use a simple mail() function
-    // In production, you should use PHPMailer or similar library
+    // Use Brevo API via simple_smtp.php
+    $fromEmail = SMTP_FROM_EMAIL;
+    $fromName = SMTP_FROM_NAME;
     
-    $headers = "MIME-Version: 1.0" . "\r\n";
-    $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-    $headers .= "From: " . SMTP_FROM_NAME . " <" . SMTP_FROM_EMAIL . ">" . "\r\n";
-    $headers .= "Reply-To: " . SMTP_FROM_EMAIL . "\r\n";
-    
-    // For better email delivery, use PHPMailer with SMTP
-    // For now, using mail() - configure your server's sendmail or use SMTP
-    // Note: On WAMP, you may need to configure sendmail or use a service like Mailtrap for testing
-    $result = @mail($email, $subject, $message, $headers);
+    $result = sendEmailViaSMTP(
+        $email,
+        $subject,
+        $message,
+        $fromEmail,
+        $fromName,
+        null,
+        null,
+        null,
+        null
+    );
     
     if (!$result) {
         error_log('Failed to send verification email to: ' . $email);

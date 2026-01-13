@@ -150,7 +150,7 @@ header('ngrok-skip-browser-warning: true');
             echo '<div class="icon success">✓</div>';
             echo '<h1>Email Vérifié !</h1>';
             echo '<div class="message success">' . htmlspecialchars($message) . '</div>';
-            echo '<a href="Test.html" class="btn">Aller sur LetShare</a>';
+            echo '<a href="index.html" class="btn">Aller sur LetShare</a>';
         } elseif ($status === 'expired') {
             echo '<div class="icon expired">⏰</div>';
             echo '<h1>Lien Expiré</h1>';

@@ -301,10 +301,12 @@ async function openModal(item) {
     }
     
     document.getElementById('modal').classList.add('active');
+    document.body.classList.add('modal-open');
 }
 
 function closeModal() {
     document.getElementById('modal').classList.remove('active');
+    document.body.classList.remove('modal-open');
 }
 
 // Carousel navigation functions
@@ -361,6 +363,7 @@ async function openReviewsModal() {
             console.error('No userId found in currentItem:', currentItem);
             reviewsList.innerHTML = '<p style="color: #ef4444; text-align: center; padding: 2rem;">Error: User information not available.</p>';
             document.getElementById('reviewsModal').classList.add('active');
+            document.body.classList.add('modal-open');
             return;
         }
         
@@ -452,15 +455,18 @@ async function openReviewsModal() {
         }
         
         document.getElementById('reviewsModal').classList.add('active');
+        document.body.classList.add('modal-open');
     } catch (error) {
         console.error('Error loading reviews:', error);
         reviewsList.innerHTML = '<p style="color: #ef4444; text-align: center; padding: 2rem;">Error loading reviews. Please try again.</p>';
         document.getElementById('reviewsModal').classList.add('active');
+        document.body.classList.add('modal-open');
     }
 }
 
 function closeReviewsModal() {
     document.getElementById('reviewsModal').classList.remove('active');
+    document.body.classList.remove('modal-open');
 }
 
 // Request Modal

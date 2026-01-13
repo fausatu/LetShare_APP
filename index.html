@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LetShare</title>
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <div class="bg-blob blob-1"></div>
+    <div class="bg-blob blob-2"></div>
+
+    <div class="container">
+        <header>
+            <a href="index.html" style="text-decoration: none; color: inherit;">
+            <div class="logo">
+                <!-- <div class="logo-icon">
+                    <div class="logo-glow"></div>
+                    <div class="logo-box">
+                        <img src="Letshare_Icon.png" alt="LetShare Logo" style="width: 130px; height: 100px; display: block;">
+                    </div>
+                </div> -->
+                <div class="logo-text">
+                    <h1>LetShare</h1>
+                        <p>Give, Swap, Grow</p>
+                </div>
+            </div>
+            </a>
+            <!-- Header for authenticated users -->
+            <div class="header-right" id="headerAuthenticated" style="display: none;">
+                <button class="btn-notifications" title="Notifications" id="btnNotifications" onclick="openNotificationsModal()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                </button>
+                <button class="btn-messages" title="Requests" id="btnMessages" onclick="openMessagesModal()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span class="message-badge" id="messageBadge" style="display: none;">0</span>
+                </button>
+                <a href="profile.html" class="btn-profile" id="profileLink" title="My Profile">FA</a>
+            </div>
+            
+            <!-- Header for non-authenticated users -->
+            <div class="header-right" id="headerGuest" style="display: none;">
+                <div class="users-avatars" id="usersAvatars" style="display: flex; align-items: center; gap: 0.5rem; margin-right: 1rem;">
+                    <!-- Avatars will be loaded dynamically -->
+                </div>
+                <div class="users-count" id="usersCount" style="margin-right: 1.5rem; color: #6b7280; font-size: 0.875rem;">
+                    <!-- Count will be loaded dynamically -->
+                </div>
+                <a href="register.html" class="btn-register" data-i18n="register" style="padding: 0.5rem 1rem; background: linear-gradient(135deg, #10b981, #059669); color: white; border-radius: 0.75rem; text-decoration: none; font-weight: 600; margin-right: 0.5rem; transition: all 0.3s;">Inscription</a>
+                <a href="login.html" class="btn-login-header" data-i18n="login" style="padding: 0.5rem 1rem; background: #f9fafb; border: 1px solid #e5e7eb; color: #1f2937; border-radius: 0.75rem; text-decoration: none; font-weight: 600; transition: all 0.3s;">Connexion</a>
+            </div>
+        </header>
+
+        <div class="hero">
+            <h2 data-i18n="heroTitle">Looking for something ?<br>Get it from your mates</h2>
+           <!-- /* <p>Trouvez le matériel dont vous avez besoin dans votre communauté étudiante</p>*/ -->
+            
+            <div class="search-container">
+                <div class="search-glow"></div>
+                <div class="search-bar">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" style="margin-left: 1rem;">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <input type="text" class="search-input" id="mainSearchInput" placeholder="Search books, materials, notes...">
+                    <button class="btn-search" onclick="performSearch()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 5v14M5 12l7-7 7 7"></path>
+                        </svg>
+                        <span data-i18n="search">Search</span>
+                    </button>
+                    <button class="btn-filters" id="btnFilters" onclick="toggleFilters()" title="Advanced Filters">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg>
+                    </button>
+                </div>
+                <div class="filters-panel" id="filtersPanel" style="display: none;">
+                    <div class="filter-group">
+                        <label>Type</label>
+                        <select id="filterType" class="filter-select">
+                            <option value="">All Types</option>
+                            <option value="donation">Donation</option>
+                            <option value="exchange">Exchange</option>
+                        </select>
+            </div>
+                    <div class="filter-group">
+                        <label>Department</label>
+                        <select id="filterDepartment" class="filter-select">
+                            <option value="">All Departments</option>
+                            <option value="Finance">Finance</option>
+                            <option value="Accounting">Accounting</option>
+                            <option value="Marketing">Marketing</option>
+                            <option value="Management">Management</option>
+                            <option value="International Business">International Business</option>
+                            <option value="Digital Marketing">Digital Marketing</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Condition</label>
+                        <select id="filterCondition" class="filter-select">
+                            <option value="">All Conditions</option>
+                            <option value="new">New</option>
+                            <option value="excellent">Excellent</option>
+                            <option value="good">Good</option>
+                            <option value="fair">Fair</option>
+                            <option value="poor">Poor</option>
+                        </select>
+                </div>
+                    <div class="filter-group">
+                        <label>
+                            <input type="checkbox" id="filterUrgent"> Urgent Only
+                        </label>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn-filter-apply" onclick="applyFilters()">Apply Filters</button>
+                        <button class="btn-filter-clear" onclick="clearFilters()">Clear</button>
+                </div>
+            </div>
+            </div>
+
+        </div>
+
+        <div class="grid" id="grid">
+            <!-- Cards will be generated by JavaScript -->
+        </div>
+    </div>
+
+    <button class="btn-add" id="btnAddItem" onclick="openAddModal()" style="display: none;">+</button>
+    <button class="btn-add btn-join-community" id="btnJoinCommunity" onclick="window.location.href='register.html'" data-i18n="joinCommunity">Rejoindre la communauté</button>
+
+    <!-- Add Item Modal -->
+    <div class="add-modal" id="addModal">
+        <div class="add-modal-content">
+            <button class="modal-close" onclick="closeAddModal()">✕</button>
+            <div class="modal-header">
+                <h2 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1.5rem;" data-i18n="addNewItem">Add New Item</h2>
+            </div>
+            <form id="addItemForm" onsubmit="handleAddItem(event)">
+                <div class="form-group">
+                    <label class="form-label" data-i18n="title">Title</label>
+                    <input type="text" class="form-input" id="itemTitle" placeholder="Enter item title" data-i18n-placeholder="enterItemTitle" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" data-i18n="type">Type</label>
+                    <select class="form-select" id="itemType" required>
+                        <option value="" data-i18n="selectType">Select type</option>
+                        <option value="donation" data-i18n="donation">Donation</option>
+                        <option value="exchange" data-i18n="exchange">Exchange</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" data-i18n="major">Major / Filière</label>
+                    <input type="text" class="form-input" id="itemDepartment" list="departmentSuggestions" placeholder="Leave empty to use your department" data-i18n-placeholder="selectMajorOptional">
+                    <datalist id="departmentSuggestions"></datalist>
+                    <small style="display: block; margin-top: 0.25rem; color: #6b7280; font-size: 0.875rem;" data-i18n="departmentHint">Optional: Specify if this item is from a different major than yours</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" data-i18n="description">Description</label>
+                    <textarea class="form-textarea" id="itemDescription" placeholder="Describe your item..." data-i18n-placeholder="enterDescription" required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" data-i18n="images">Images</label>
+                    <input type="url" class="form-input" id="itemImageUrl" placeholder="Or enter image URL (optional)" data-i18n-placeholder="enterImageUrl" style="margin-bottom: 0.75rem;">
+                    <button type="button" class="btn-add-url" onclick="addImageFromUrl()" style="padding: 0.5rem 1rem; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 0.5rem; color: #1f2937; cursor: pointer; font-size: 0.875rem; margin-bottom: 1rem;" data-i18n="addUrl">Add URL</button>
+                    <p style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 0.75rem;" data-i18n="orUploadImages">Or upload images (multiple allowed)</p>
+                    <div class="image-upload" onclick="document.getElementById('imageFileInput').click()">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto; color: #9ca3af;">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <p style="color: #9ca3af; margin-top: 0.5rem;" data-i18n="clickToUpload">Click to upload images</p>
+                        <input type="file" id="imageFileInput" accept="image/*" multiple onchange="handleImageUpload(event)" style="display: none;">
+                    </div>
+                    <div id="imagesPreviewContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.75rem; margin-top: 1rem;"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" data-i18n="condition">Condition</label>
+                    <select class="form-select" id="itemCondition">
+                        <option value="" data-i18n="selectCondition">Select condition (optional)</option>
+                        <option value="new" data-i18n="conditionNew">New</option>
+                        <option value="excellent" data-i18n="conditionExcellent">Excellent</option>
+                        <option value="good" data-i18n="conditionGood">Good</option>
+                        <option value="fair" data-i18n="conditionFair">Fair</option>
+                        <option value="poor" data-i18n="conditionPoor">Poor</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="itemUrgent" style="width: 18px; height: 18px;">
+                        <span data-i18n="markAsUrgent">Mark as urgent</span>
+                    </label>
+                </div>
+                
+                <button type="submit" class="btn-submit" data-i18n="addItem">Add Item</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <div class="modal-header">
+                <div class="modal-image-carousel" id="modalImageCarousel">
+                    <button class="carousel-btn carousel-prev" id="carouselPrev" onclick="changeImage(-1)" style="display: none;">‹</button>
+                    <div class="carousel-images" id="carouselImages">
+                        <!-- Images will be loaded dynamically -->
+                    </div>
+                    <button class="carousel-btn carousel-next" id="carouselNext" onclick="changeImage(1)" style="display: none;">›</button>
+                    <div class="carousel-indicators" id="carouselIndicators"></div>
+                </div>
+                <h2 class="modal-title" id="modalTitle"></h2>
+                <p class="modal-desc" id="modalDesc"></p>
+            </div>
+            <div class="modal-info">
+                <div class="user-profile-box" style="grid-column: span 2;">
+                    <div class="modal-user-avatar" id="modalUserAvatar"></div>
+                    <div class="modal-user-info">
+                        <div class="modal-user-name" id="modalUserName"></div>
+                        <div class="modal-user-rating">
+                            <div class="stars" id="modalStars"></div>
+                            <span class="rating-value" id="modalRating"></span>
+                            <span class="reviews-count" id="modalReviews" onclick="openReviewsModal()"></span>
+                        </div>
+                        <div class="modal-university" id="modalUniversity" style="display: none; margin-top: 0.5rem; align-items: center; gap: 0.5rem;">
+                            <img id="modalUniversityLogo" src="" alt="University Logo" style="max-width: 24px; max-height: 24px; object-fit: contain; display: none;">
+                            <span id="modalUniversityName" style="font-size: 0.875rem; color: #6b7280;"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="info-box">
+                    <div class="info-label" data-i18n="major">Major</div>
+                    <div class="info-value" id="modalDepartment"></div>
+                </div>
+                <div class="info-box">
+                    <div class="info-label" data-i18n="published">Published</div>
+                    <div class="info-value" id="modalTime" data-created-at=""></div>
+                </div>
+            </div>
+            <button class="btn-contact" id="btnContact" onclick="requestItem()" data-i18n="iWantThis">Request this</button>
+        </div>
+    </div>
+
+    <div class="reviews-modal" id="reviewsModal">
+        <div class="reviews-content">
+            <button class="modal-close" onclick="closeReviewsModal()">✕</button>
+            <h2 data-i18n="reviews">Reviews</h2>
+            <div id="reviewsList"></div>
+        </div>
+    </div>
+
+    <!-- Request Modal (for exchanges) -->
+    <div class="request-modal" id="requestModal">
+        <div class="request-modal-content">
+            <button class="modal-close" onclick="closeRequestModal()">✕</button>
+            <h2 style="margin-bottom: 1.5rem; font-size: 1.5rem;" data-i18n="requestExchange">Request Exchange</h2>
+            <p style="color: #9ca3af; margin-bottom: 1.5rem;"><span data-i18n="sendMessageTo">Send a message to</span> <span id="requestUserName"></span> <span data-i18n="toProposeExchange">to propose an exchange</span></p>
+            <form id="requestForm" onsubmit="sendExchangeRequest(event)">
+                <div class="form-group">
+                    <label class="form-label" data-i18n="yourMessage">Your message</label>
+                    <textarea class="form-textarea" id="requestMessage" placeholder="Hi! I'd like to exchange this for [your item]. When and where can we meet?" data-i18n-placeholder="messagePlaceholder" required></textarea>
+                </div>
+                <button type="submit" class="btn-submit" data-i18n="sendRequest">Send Request</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notifications Modal -->
+    <div class="notifications-modal" id="notificationsModal" onclick="if(event.target.id === 'notificationsModal') closeNotificationsModal()">
+        <div class="notifications-modal-content">
+            <button class="modal-close" onclick="closeNotificationsModal()" style="position: absolute; top: 1.5rem; right: 1.2rem;">✕</button>
+            <div class="notifications-header">
+                <h2 style="margin: 0; font-size: 1.5rem; font-weight: 600; color: #1f2937;" data-i18n="notifications">Notifications</h2>
+                <button class="btn-mark-all-read" onclick="markAllNotificationsAsRead()" style="padding: 0.5rem 1rem; background: #10b981; border: 1px solid #e5e7eb; border-radius: 0.5rem; color: white; font-size: 0.875rem; cursor: pointer; transition: all 0.3s; margin-right: 50px;" data-i18n="markAllAsRead">Mark all as read</button>
+            </div>
+            <div id="notificationsList" style="flex: 1; overflow-y: auto; min-height: 0; scrollbar-width: none; -ms-overflow-style: none; max-height: 70vh;">
+                <!-- Notifications will be loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages Modal -->
+    <div class="messages-modal" id="messagesModal">
+        <div class="messages-modal-content" id="messagesModalContent">
+            <button class="modal-close" onclick="closeMessagesModal()" style="position: absolute; top: 1.5rem; right: 1.5rem;">✕</button>
+            <div id="messagesListView">
+                <h2 style="margin: 0 0 1rem 0; font-size: 1.5rem; font-weight: 600;">Messages</h2>
+                <div id="messagesListMain" style="flex: 1; overflow-y: auto; min-height: 0; scrollbar-width: none; -ms-overflow-style: none;">
+                    <!-- Messages will be loaded dynamically -->
+                </div>
+            </div>
+            <div id="conversationView" style="display: none;">
+                <!-- Conversation will be loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Feedback Modal (Post-Exchange) -->
+    <div class="feedback-modal" id="feedbackModal" onclick="if(event.target.id === 'feedbackModal') closeFeedbackModal()">
+        <div class="feedback-modal-content">
+            <button class="modal-close" onclick="closeFeedbackModal()" style="position: absolute; top: 1.5rem; right: 1.5rem;">✕</button>
+            <h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem; font-weight: 600; color: #1f2937;">How was your exchange?</h2>
+            <p style="color: #6b7280; margin-bottom: 1.5rem; font-size: 0.875rem;">Share your experience with <span id="feedbackUserName"></span></p>
+            <form id="feedbackForm" onsubmit="submitFeedback(event)">
+                <div class="form-group">
+                    <label class="form-label">Overall experience</label>
+                    <div class="feedback-type-buttons">
+                        <button type="button" class="feedback-type-btn" data-type="positive" onclick="selectFeedbackType('positive')">
+                            <span style="font-size: 1.5rem;">😊</span>
+                            <span>Positive</span>
+                        </button>
+                        <button type="button" class="feedback-type-btn" data-type="neutral" onclick="selectFeedbackType('neutral')">
+                            <span style="font-size: 1.5rem;">😐</span>
+                            <span>Neutral</span>
+                        </button>
+                        <button type="button" class="feedback-type-btn" data-type="negative" onclick="selectFeedbackType('negative')">
+                            <span style="font-size: 1.5rem;">😞</span>
+                            <span>Negative</span>
+                        </button>
+                    </div>
+                    <input type="hidden" id="feedbackType" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Rating</label>
+                    <div class="rating-stars" id="feedbackRating">
+                        <span class="star-rating" data-rating="1" onclick="selectRating(1)">★</span>
+                        <span class="star-rating" data-rating="2" onclick="selectRating(2)">★</span>
+                        <span class="star-rating" data-rating="3" onclick="selectRating(3)">★</span>
+                        <span class="star-rating" data-rating="4" onclick="selectRating(4)">★</span>
+                        <span class="star-rating" data-rating="5" onclick="selectRating(5)">★</span>
+                    </div>
+                    <input type="hidden" id="feedbackRatingValue" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Comments (optional)</label>
+                    <textarea class="form-textarea" id="feedbackText" placeholder="Tell us more about your experience..." rows="4"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="feedbackWouldRecommend" style="width: 18px; height: 18px; cursor: pointer;">
+                        <span>Would you recommend this user?</span>
+                    </label>
+                </div>
+                
+                <div class="feedback-actions">
+                    <button type="button" class="btn-skip" onclick="skipFeedback()">Skip</button>
+                    <button type="submit" class="btn-submit">Submit Feedback</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <span class="toast-icon">✓</span>
+        <span id="toastMessage">Item added successfully!</span>
+    </div>
+
+    <!-- Terms Acceptance Modal (for existing users) -->
+    <div id="termsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div style="background: white; border-radius: 1.25rem; padding: 0; max-width: 550px; width: 90%; max-height: 85vh; box-shadow: 0 25px 80px rgba(0,0,0,0.4); display: flex; flex-direction: column; overflow: hidden;">
+            
+            <!-- Header fixe -->
+            <div style="padding: 2rem 2rem 1.5rem; border-bottom: 1px solid #e5e7eb; background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);">
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem;">
+                    <div style="width: 3rem; height: 3rem; background: linear-gradient(135deg, #10b981, #059669); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
+                        📋
+                    </div>
+                    <h2 style="font-size: 1.375rem; font-weight: 700; color: #1f2937; margin: 0;" data-i18n="termsUpdatedTitle">Conditions mises à jour</h2>
+                </div>
+                <p style="color: #6b7280; font-size: 0.875rem; line-height: 1.6; margin: 0;" data-i18n="termsUpdatedText">
+                    Nos CGU et Politique de confidentialité ont été mises à jour. Veuillez les lire et les accepter pour continuer.
+                </p>
+            </div>
+            
+            <!-- Contenu scrollable avec scrollbar custom -->
+            <div style="flex: 1; overflow-y: auto; padding: 1.5rem 2rem; scrollbar-width: thin; scrollbar-color: #10b981 #f3f4f6;">
+                <style>
+                    #termsModal div::-webkit-scrollbar {
+                        width: 8px;
+                    }
+                    #termsModal div::-webkit-scrollbar-track {
+                        background: #f3f4f6;
+                        border-radius: 10px;
+                    }
+                    #termsModal div::-webkit-scrollbar-thumb {
+                        background: #10b981;
+                        border-radius: 10px;
+                    }
+                    #termsModal div::-webkit-scrollbar-thumb:hover {
+                        background: #059669;
+                    }
+                </style>
+                
+                <div style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); padding: 1.25rem; border-radius: 0.75rem; margin-bottom: 1.5rem; border: 1px solid #d1fae5;">
+                    <p style="color: #065f46; font-size: 0.875rem; margin-bottom: 1rem; font-weight: 600;">
+                        <span data-i18n="documentsToReview">📚 Documents à consulter :</span>
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <a href="#" onclick="openTermsInLanguage(); return false;" style="display: flex; align-items: center; gap: 0.75rem; color: #10b981; font-weight: 600; text-decoration: none; padding: 0.75rem; background: white; border-radius: 0.5rem; transition: all 0.2s; border: 1px solid #d1fae5;">
+                            <span style="font-size: 1.25rem;">📄</span>
+                            <span data-i18n="termsOfService" style="flex: 1;">Conditions Générales d'Utilisation</span>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                            </svg>
+                        </a>
+                        <a href="#" onclick="openPrivacyInLanguage(); return false;" style="display: flex; align-items: center; gap: 0.75rem; color: #10b981; font-weight: 600; text-decoration: none; padding: 0.75rem; background: white; border-radius: 0.5rem; transition: all 0.2s; border: 1px solid #d1fae5;">
+                            <span style="font-size: 1.25rem;">🔒</span>
+                            <span data-i18n="privacyPolicy" style="flex: 1;">Politique de confidentialité</span>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+                
+                <label style="display: flex; align-items: flex-start; gap: 0.875rem; cursor: pointer; user-select: none; padding: 1.25rem; background: #f9fafb; border-radius: 0.75rem; border: 2px solid #e5e7eb; transition: all 0.3s;">
+                    <input type="checkbox" id="termsModalConsent" style="margin-top: 0.125rem; width: 1.25rem; height: 1.25rem; cursor: pointer; accent-color: #10b981; flex-shrink: 0;">
+                    <span style="color: #374151; font-size: 0.9375rem; line-height: 1.6; font-weight: 500;">
+                        <span data-i18n="acceptTermsTextModal">J'ai lu et j'accepte les Conditions Générales d'Utilisation et la Politique de confidentialité</span>
+                    </span>
+                </label>
+            </div>
+            
+            <!-- Footer fixe -->
+            <div style="padding: 1.5rem 2rem; border-top: 1px solid #e5e7eb; background: #fafafa;">
+                <div style="display: flex; gap: 0.875rem; margin-bottom: 1rem;">
+                    <button id="btnAcceptTerms" disabled style="flex: 1; padding: 1rem; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 0.625rem; font-weight: 600; font-size: 1rem; cursor: not-allowed; opacity: 0.5; transition: all 0.3s; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);" data-i18n="acceptAndContinue">
+                        Accepter et continuer
+                    </button>
+                    <button onclick="handleDeclineTerms()" style="padding: 1rem 1.5rem; background: white; color: #6b7280; border: 2px solid #e5e7eb; border-radius: 0.625rem; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.3s; white-space: nowrap;" data-i18n="decline">
+                        Refuser
+                    </button>
+                </div>
+                <p style="color: #9ca3af; font-size: 0.8125rem; margin: 0; text-align: center; line-height: 1.5;" data-i18n="declineWarning">
+                    ⚠️ En refusant, vous serez déconnecté et ne pourrez pas utiliser Letshare.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Core modules -->
+    <script src="js/terms-config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/translations.js"></script>
+    <script src="js/filters.js"></script>
+    <script src="js/items.js"></script>
+    <script src="js/modals.js"></script>
+    <script src="js/messages.js"></script>
+    <script src="js/presence.js"></script>
+    <script src="js/feedback.js"></script>
+    <script src="js/push-notifications.js"></script>
+    <!-- Main application (will be refactored further) -->
+    <script src="js/main.js"></script>
+</body>
+</html>

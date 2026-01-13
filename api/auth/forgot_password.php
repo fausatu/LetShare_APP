@@ -4,12 +4,36 @@
  * Generates a reset token and sends it to the user's email
  */
 
+// Set CORS headers early
+header('Access-Control-Allow-Origin: https://letshare.infinityfreeapp.com');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+header('Access-Control-Allow-Credentials: true');
+header('Content-Type: application/json; charset=utf-8');
+
+// Handle preflight requests
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+// Only allow POST requests
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Method not allowed. Only POST requests are accepted.'
+    ], JSON_UNESCAPED_UNICODE);
+    exit();
+}
+
 // Prevent any output before JSON
 if (ob_get_level()) {
     ob_clean();
 }
 
-require_once '../config.php';
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../../lib/simple_smtp.php';
 
 $data = getRequestData();
 $email = trim($data['email'] ?? '');
@@ -51,7 +75,8 @@ try {
     if ($rateLimit['count'] >= $maxAttempts) {
         $remainingTime = $rateLimitWindow - ($currentTime - $rateLimit['first_attempt']);
         $remainingMinutes = ceil($remainingTime / 60);
-        sendResponse(false, 'Too many requests. Please try again in ' . $remainingMinutes . ' minutes.', null, 429);
+        $message = getSecurityMessage('forgot_password', $remainingMinutes);
+        sendResponse(false, $message, ['retry_after' => $remainingTime], 429);
     }
     
     // Increment attempt count
@@ -101,10 +126,25 @@ try {
     }
     
     // Send password reset email
-    // Use full URL if APP_BASE_URL is set, otherwise use relative URL
-    $baseUrl = defined('APP_BASE_URL') && !empty(APP_BASE_URL) 
-        ? APP_BASE_URL 
-        : ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . dirname(dirname($_SERVER['SCRIPT_NAME'])));
+    // Detect if we're on localhost/development
+    $isLocal = (
+        $_SERVER['HTTP_HOST'] === 'localhost' ||
+        strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false ||
+        strpos($_SERVER['HTTP_HOST'], 'localhost:') !== false ||
+        (defined('APP_ENV') && APP_ENV === 'development')
+    );
+    
+    // Use local URL in development, APP_BASE_URL in production
+    if ($isLocal) {
+        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+        // Script is in /api/auth/, so go up 2 levels to reach project root
+        $baseUrl = $protocol . '://' . $_SERVER['HTTP_HOST'] . dirname(dirname(dirname($_SERVER['SCRIPT_NAME'])));
+    } else {
+        $baseUrl = defined('APP_BASE_URL') && !empty(APP_BASE_URL) 
+            ? APP_BASE_URL 
+            : ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . dirname(dirname($_SERVER['SCRIPT_NAME'])));
+    }
+    
     $resetUrl = rtrim($baseUrl, '/') . '/reset_password.html?token=' . urlencode($resetToken);
     
     $subject = 'Reset your password - LetShare';
@@ -166,21 +206,34 @@ try {
     </html>
     ";
     
-    $headers = "MIME-Version: 1.0" . "\r\n";
-    $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-    $headers .= "From: " . SMTP_FROM_NAME . " <" . SMTP_FROM_EMAIL . ">" . "\r\n";
-    $headers .= "Reply-To: " . SMTP_FROM_EMAIL . "\r\n";
-    $headers .= "X-Mailer: PHP/" . phpversion() . "\r\n";
+    // Send password reset email using native SMTP
+    error_log('Sending password reset email to: ' . $email);
     
-    $emailSent = @mail($email, $subject, $message, $headers);
-    
-    if ($emailSent) {
-        sendResponse(true, 'If this email is registered, a password reset link has been sent.');
-    } else {
-        error_log('Failed to send password reset email to: ' . $email);
-        // Still return success to prevent email enumeration
-        sendResponse(true, 'If this email is registered, a password reset link has been sent.');
+    try {
+        $emailSent = sendEmailViaSMTP(
+            $email,
+            $subject,
+            $message,
+            SMTP_FROM_EMAIL,
+            SMTP_FROM_NAME,
+            SMTP_HOST,
+            SMTP_PORT,
+            SMTP_USERNAME,
+            SMTP_PASSWORD
+        );
+        
+        if ($emailSent) {
+            error_log('✅ Password reset email sent successfully to: ' . $email);
+        } else {
+            error_log('❌ Failed to send password reset email to: ' . $email);
+        }
+    } catch (Exception $e) {
+        error_log('❌ SMTP error sending password reset email: ' . $e->getMessage());
+        $emailSent = false;
     }
+    
+    // Always return success to prevent email enumeration (security best practice)
+    sendResponse(true, 'If this email is registered, a password reset link has been sent.');
     
 } catch (PDOException $e) {
     error_log('Forgot password PDO error: ' . $e->getMessage());

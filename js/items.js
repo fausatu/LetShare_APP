@@ -25,6 +25,7 @@ async function openAddModal() {
     await loadDepartments();
     
     document.getElementById('addModal').classList.add('active');
+    document.body.classList.add('modal-open');
 }
 
 // Load departments from API for autocomplete
@@ -50,6 +51,7 @@ async function loadDepartments() {
 
 function closeAddModal() {
     document.getElementById('addModal').classList.remove('active');
+    document.body.classList.remove('modal-open');
     document.getElementById('addItemForm').reset();
     
     // Clear images
@@ -115,6 +117,9 @@ function renderItems() {
     // Get list of accepted items (items that have been accepted and should be removed from feed)
     var acceptedItems = JSON.parse(localStorage.getItem('acceptedItems') || '[]');
     
+    // Counter for visible items
+    var visibleItemsCount = 0;
+    
     items.forEach(function(item) {
         // Skip items posted by the current user (they can see them in their profile)
         var currentUser = getCurrentUserSync();
@@ -140,6 +145,8 @@ function renderItems() {
         if (isAccepted) {
             return;
         }
+        
+        visibleItemsCount++;
         
         var card = document.createElement('div');
         card.className = 'card' + (item.large ? ' large' : '') + (item.tall ? ' tall' : '');
@@ -219,6 +226,25 @@ function renderItems() {
         grid.appendChild(card);
     }
 });
+
+// Show empty state if no items are visible
+if (visibleItemsCount === 0) {
+    var emptyState = document.createElement('div');
+    emptyState.className = 'empty-state';
+    emptyState.style.cssText = 'grid-column: 1 / -1; text-align: center; padding: 4rem 2rem; color: #6b7280;';
+    emptyState.innerHTML = 
+        '<svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 1.5rem; opacity: 0.3;">' +
+            '<path d="M20 7h-4V5c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zM10 5h4v2h-4V5z"/>' +
+        '</svg>' +
+        '<h3 style="font-size: 1.25rem; font-weight: 600; color: #374151; margin-bottom: 0.5rem;" data-i18n="noItemsTitle">Aucun objet disponible</h3>' +
+        '<p style="font-size: 0.95rem; color: #6b7280;" data-i18n="noItemsMessage">Il n\'y a aucun objet à afficher pour le moment. Revenez plus tard !</p>';
+    grid.appendChild(emptyState);
+    
+    // Apply translations to the empty state
+    if (typeof applyTranslations === 'function') {
+        applyTranslations();
+    }
+}
 }
 
 // Initialize grid when DOM is ready

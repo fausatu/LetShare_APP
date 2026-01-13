@@ -167,7 +167,7 @@ self.addEventListener('notificationclick', function(event) {
     event.notification.close();
     
     // Get base URL from current location or use relative path
-    var urlToOpen = '/Test.html';
+    var urlToOpen = '/index.html';
     
     // If notification has data with URL, use it
     if (event.notification.data && event.notification.data.url) {

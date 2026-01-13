@@ -165,6 +165,27 @@ window.addEventListener('load', async function() {
             if (headerAuth) headerAuth.style.display = 'flex';
             if (headerGuest) headerGuest.style.display = 'none';
             
+            // Sync language from API to localStorage
+            try {
+                const userResponse = await authAPI.getCurrentUser();
+                if (userResponse.success && userResponse.data && userResponse.data.user) {
+                    var userLanguage = userResponse.data.user.language;
+                    if (userLanguage) {
+                        var settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+                        settings.language = userLanguage;
+                        localStorage.setItem('userSettings', JSON.stringify(settings));
+                    }
+                }
+            } catch (error) {
+                console.error('Error syncing language:', error);
+            }
+            
+            // Apply translations immediately after syncing language
+            applyTranslations();
+            
+            // Check if terms acceptance is required
+            checkTermsAcceptance();
+            
             // Check if profile was just updated (from settings page)
             var profileJustUpdated = sessionStorage.getItem('userProfileJustUpdated');
             if (profileJustUpdated === 'true') {
@@ -195,7 +216,6 @@ window.addEventListener('load', async function() {
             await updateMessageBadge();
             await updateNotificationBadge();
             await updateProfileAvatar();
-            applyTranslations();
             
             // Start notifications polling
             startNotificationsPolling();
@@ -402,7 +422,7 @@ async function loadNotifications() {
     if (!container) return;
     
     try {
-        container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #9ca3af;">Loading notifications...</div>';
+        container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #9ca3af;">' + t('loadingNotifications') + '</div>';
         
         const response = await notificationsAPI.getAll(50);
         
@@ -416,7 +436,7 @@ async function loadNotifications() {
             container.innerHTML = '';
             
             if (notifications.length === 0) {
-                container.innerHTML = '<div class="notification-empty">No notifications yet</div>';
+                container.innerHTML = '<div class="notification-empty">' + t('noNotifications') + '</div>';
                 return;
             }
             
@@ -437,10 +457,13 @@ async function loadNotifications() {
                 // Determine icon color based on notification type
                 var iconColor = getNotificationIconColor(notification.type);
                 
+                // Translate notification title
+                var translatedTitle = translateNotificationTitle(notification.title || 'Notification');
+                
                 item.innerHTML = 
                     '<div class="notification-icon" style="background: ' + iconColor + ';">' + icon + '</div>' +
                     '<div class="notification-content">' +
-                        '<div class="notification-title">' + (notification.title || 'Notification') + '</div>' +
+                        '<div class="notification-title">' + translatedTitle + '</div>' +
                         (notification.message ? '<div class="notification-message">' + notification.message + '</div>' : '') +
                         '<div class="notification-time">' + time + '</div>' +
                     '</div>';
@@ -449,11 +472,11 @@ async function loadNotifications() {
             });
         } else {
             console.error('Invalid response format:', response);
-            container.innerHTML = '<div class="notification-empty">Error loading notifications</div>';
+            container.innerHTML = '<div class="notification-empty">' + t('errorLoadingNotifications') + '</div>';
         }
     } catch (error) {
         console.error('Error loading notifications:', error);
-        container.innerHTML = '<div class="notification-empty">Error loading notifications</div>';
+        container.innerHTML = '<div class="notification-empty">' + t('errorLoadingNotifications') + '</div>';
     }
 }
 
@@ -518,6 +541,7 @@ function openNotificationsModal() {
     var modal = document.getElementById('notificationsModal');
     if (modal) {
         modal.classList.add('active');
+        document.body.classList.add('modal-open');
         loadNotifications();
     }
 }
@@ -526,6 +550,7 @@ function closeNotificationsModal() {
     var modal = document.getElementById('notificationsModal');
     if (modal) {
         modal.classList.remove('active');
+        document.body.classList.remove('modal-open');
     }
 }
 
@@ -637,4 +662,152 @@ window.addEventListener('storage', function(e) {
         applyTranslations(); // Update translations when language changes
     }
 });
+
+// Check if user needs to accept terms
+async function checkTermsAcceptance() {
+    try {
+        const userResponse = await authAPI.getCurrentUser();
+        console.log('User response for terms check:', userResponse);
+        if (userResponse.success && userResponse.data) {
+            const user = userResponse.data.user;
+            const termsRequired = userResponse.data.terms_required;
+            
+            // Check if terms were never accepted
+            if (termsRequired) {
+                console.log('Terms never accepted - showing modal');
+                showTermsModal(true); // true = first time
+                return;
+            }
+            
+            // Check if user accepted an older version
+            if (user && user.terms_version) {
+                const userVersion = user.terms_version;
+                const currentVersion = TERMS_CONFIG.CURRENT_VERSION;
+                
+                console.log('User terms version:', userVersion, 'Current version:', currentVersion);
+                
+                if (userVersion !== currentVersion) {
+                    console.log('Terms version outdated - showing update modal');
+                    showTermsModal(false); // false = update
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error checking terms acceptance:', error);
+    }
+}
+
+// Show terms acceptance modal
+function showTermsModal(isFirstTime = true) {
+    const modal = document.getElementById('termsModal');
+    const checkbox = document.getElementById('termsModalConsent');
+    const acceptBtn = document.getElementById('btnAcceptTerms');
+    const modalTitle = modal.querySelector('[data-i18n="termsUpdatedTitle"]');
+    const modalText = modal.querySelector('[data-i18n="termsUpdatedText"]');
+    
+    // Update text based on whether it's first time or update
+    if (isFirstTime) {
+        // First time: stronger language
+        if (getCurrentLanguage() === 'fr') {
+            modalTitle.textContent = '📋 Acceptation requise';
+            modalText.textContent = 'Pour utiliser Letshare, vous devez lire et accepter nos Conditions Générales d\'Utilisation et notre Politique de confidentialité.';
+        } else {
+            modalTitle.textContent = '📋 Acceptance Required';
+            modalText.textContent = 'To use Letshare, you must read and accept our Terms of Service and Privacy Policy.';
+        }
+    } else {
+        // Update: softer language
+        if (getCurrentLanguage() === 'fr') {
+            modalTitle.textContent = '📋 Conditions mises à jour';
+            modalText.textContent = 'Nos CGU et Politique de confidentialité ont été mises à jour. Veuillez les lire et les accepter pour continuer.';
+        } else {
+            modalTitle.textContent = '📋 Terms Updated';
+            modalText.textContent = 'Our Terms of Service and Privacy Policy have been updated. Please read and accept them to continue.';
+        }
+    }
+    
+    modal.style.display = 'flex';
+    
+    // Enable/disable button based on checkbox
+    checkbox.addEventListener('change', function() {
+        if (this.checked) {
+            acceptBtn.disabled = false;
+            acceptBtn.style.opacity = '1';
+            acceptBtn.style.cursor = 'pointer';
+        } else {
+            acceptBtn.disabled = true;
+            acceptBtn.style.opacity = '0.5';
+            acceptBtn.style.cursor = 'not-allowed';
+        }
+    });
+    
+    // Handle accept
+    acceptBtn.onclick = async function() {
+        if (!checkbox.checked) return;
+        
+        acceptBtn.disabled = true;
+        acceptBtn.textContent = t('saving') || 'Enregistrement...';
+        
+        try {
+            const response = await fetch('api/accept-terms.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    version: TERMS_CONFIG.CURRENT_VERSION
+                }),
+                credentials: 'include'
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                modal.style.display = 'none';
+                
+                // Update user data in localStorage
+                const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+                currentUser.terms_version = TERMS_CONFIG.CURRENT_VERSION;
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                if (isFirstTime) {
+                    showToast(t('termsAcceptedSuccess') || '✓ Conditions acceptées avec succès');
+                } else {
+                    showToast('✓ ' + (getCurrentLanguage() === 'fr' ? 'Nouvelles conditions acceptées' : 'New terms accepted'));
+                }
+            } else {
+                alert(data.message || t('errorOccurred') || 'Une erreur est survenue');
+                acceptBtn.disabled = false;
+                acceptBtn.textContent = t('acceptAndContinue') || 'Accepter et continuer';
+            }
+        } catch (error) {
+            console.error('Error accepting terms:', error);
+            alert(t('errorOccurred') || 'Une erreur est survenue');
+            acceptBtn.disabled = false;
+            acceptBtn.textContent = t('acceptAndContinue') || 'Accepter et continuer';
+        }
+    };
+}
+
+// Handle decline terms
+function handleDeclineTerms() {
+    if (confirm(t('confirmDeclineTerms') || 'En refusant les conditions, vous serez déconnecté. Êtes-vous sûr ?')) {
+        // Logout user
+        authAPI.logout();
+        window.location.href = 'login.html';
+    }
+}
+
+// Open terms/privacy in correct language
+function openTermsInLanguage() {
+    const lang = getCurrentLanguage();
+    const url = lang === 'en' ? 'terms-en.html' : 'terms.html';
+    window.open(url, '_blank');
+}
+
+function openPrivacyInLanguage() {
+    const lang = getCurrentLanguage();
+    const url = lang === 'en' ? 'privacy-en.html' : 'privacy.html';
+    window.open(url, '_blank');
+}
 
