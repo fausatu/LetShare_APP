@@ -597,3 +597,5 @@ function handleAPIError(error) {
     }
 }
 
+
+let bonjour = `bonjour ${nom} ${prenom} comment ça va ?`;
