@@ -11,6 +11,257 @@ var grid = null;
 var uploadedImages = [];
 var isSubmittingItem = false; // Prevent multiple submissions
 
+// Auto-refresh items interval (30 seconds)
+var itemsRefreshInterval = null;
+var ITEMS_REFRESH_DELAY = 30000; // 30 seconds
+var knownItemIds = new Set(); // Track known item IDs to detect new items
+
+// Initialize known item IDs from current items
+function initKnownItemIds() {
+    knownItemIds.clear();
+    items.forEach(function(item) {
+        knownItemIds.add(Number(item.id));
+    });
+}
+
+// Silent refresh - only add NEW items without affecting existing ones
+async function silentRefreshItems() {
+    try {
+        // Build filter options (same as loadItems)
+        var filterOptions = {};
+        if (typeof currentFilters !== 'undefined') {
+            if (currentFilters.type) filterOptions.type = currentFilters.type;
+            if (currentFilters.department) filterOptions.department = currentFilters.department;
+            if (currentFilters.condition) filterOptions.condition = currentFilters.condition;
+            if (currentFilters.urgent) filterOptions.urgent = true;
+            if (currentFilters.search) filterOptions.search = currentFilters.search;
+        }
+        
+        const response = await itemsAPI.getAll('all', filterOptions);
+        if (!response.success || !response.data) return;
+        
+        var newItems = response.data;
+        var currentUser = getCurrentUserSync();
+        var deletedItems = JSON.parse(localStorage.getItem('deletedItems') || '[]');
+        var acceptedItems = JSON.parse(localStorage.getItem('acceptedItems') || '[]');
+        
+        // Find items that are truly new (not in our known set)
+        var itemsToAdd = [];
+        newItems.forEach(function(item) {
+            var itemId = Number(item.id);
+            
+            // Skip if already known
+            if (knownItemIds.has(itemId)) return;
+            
+            // Skip user's own items
+            if (currentUser && item.user === currentUser.name) return;
+            
+            // Skip deleted/accepted items
+            if (deletedItems.some(function(id) { return Number(id) === itemId; })) return;
+            if (acceptedItems.some(function(id) { return Number(id) === itemId; })) return;
+            
+            itemsToAdd.push(item);
+            knownItemIds.add(itemId);
+        });
+        
+        // If no new items, nothing to do
+        if (itemsToAdd.length === 0) return;
+        
+        // Add new items to the beginning of the array
+        items = itemsToAdd.concat(items);
+        
+        // Prepend new cards to grid (at the top) with animation
+        var grid = document.getElementById('grid');
+        if (!grid) return;
+        
+        // Remove empty state if present
+        var emptyState = grid.querySelector('.empty-state');
+        if (emptyState) {
+            emptyState.remove();
+        }
+        
+        // Create and prepend new cards with fade-in animation
+        itemsToAdd.reverse().forEach(function(item) {
+            var card = createItemCard(item);
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(-20px)';
+            grid.insertBefore(card, grid.firstChild);
+            
+            // Translate new card
+            var userLang = (window.getCurrentLanguage ? window.getCurrentLanguage() : 'en') || 'en';
+            translateItemCard(card, item, userLang);
+            
+            // Trigger animation
+            setTimeout(function() {
+                card.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, 50);
+        });
+        
+    } catch (e) {
+        console.error('Silent refresh failed:', e);
+    }
+}
+
+// Helper function to translate item card content
+function translateItemCard(card, item, userLang) {
+    var currentUser = getCurrentUserSync ? getCurrentUserSync() : null;
+    var isAuthor = currentUser && currentUser.id && item.user_id && currentUser.id === item.user_id;
+    
+    // Don't translate author's own items, only translate if user language is not English
+    if (isAuthor) {
+        return;
+    }
+    
+    // Get the source language of the item (try multiple property names)
+    var sourceLang = item.userLang || item.user_lang || item.lang || 'fr';
+    
+    // ALWAYS try to translate for non-authors (Google Translate detects source language automatically)
+    // Translate title
+    if (item.title) {
+        autoTranslateText(item.title, userLang, sourceLang).then(function(translated) {
+            var titleElem = card.querySelector('.card-title');
+            if (titleElem && translated && translated !== item.title) {
+                titleElem.textContent = translated;
+            }
+        }).catch(function(error) {
+            console.warn('[translateItemCard] Title translation failed:', error);
+        });
+    }
+    
+    // Translate description
+    if (item.description) {
+        autoTranslateText(item.description, userLang, sourceLang).then(function(translated) {
+            var descElem = card.querySelector('.card-desc');
+            if (descElem && translated && translated !== item.description) {
+                descElem.textContent = translated;
+            }
+        }).catch(function(error) {
+            console.warn('[translateItemCard] Description translation failed:', error);
+        });
+    }
+}
+
+// Create a card element for an item (extracted from renderItems)
+function createItemCard(item) {
+    var card = document.createElement('div');
+    card.className = 'card' + (item.large ? ' large' : '') + (item.tall ? ' tall' : '');
+    card.onclick = function() { openModal(item); };
+    
+    var userInitials = item.user.split(' ').map(function(n) { return n[0]; }).join('');
+    var avatarHtml = '';
+    if (item.user_avatar) {
+        avatarHtml = '<div class="user-avatar has-image"><img src="' + item.user_avatar + '" alt="' + item.user + '" onerror="this.parentNode.classList.remove(\'has-image\'); this.parentNode.textContent = \'' + userInitials + '\';"></div>';
+    } else {
+        avatarHtml = '<div class="user-avatar" style="background: ' + item.color + '">' + userInitials + '</div>';
+    }
+    var badgeColor = item.type === 'donation' ? '#4ade80' : '#60a5fa';
+    var badgeText = item.type === 'donation' ? ' Donation ' : ' Exchange';
+    
+    // Condition status badge
+    var conditionBadge = '';
+    if (item.condition_status) {
+        var lang = getCurrentLanguage();
+        var conditionLabels = {
+            en: {
+                'new': { text: 'New', color: '#10b981' },
+                'excellent': { text: 'Excellent', color: '#22c55e' },
+                'good': { text: 'Good', color: '#84cc16' },
+                'fair': { text: 'Fair', color: '#eab308' },
+                'poor': { text: 'Poor', color: '#f97316' }
+            },
+            fr: {
+                'new': { text: 'Neuf', color: '#10b981' },
+                'excellent': { text: 'Excellent', color: '#22c55e' },
+                'good': { text: 'Bon', color: '#84cc16' },
+                'fair': { text: 'Correct', color: '#eab308' },
+                'poor': { text: 'Usé', color: '#f97316' }
+            }
+        };
+        var condition = (conditionLabels[lang] && conditionLabels[lang][item.condition_status]) 
+            ? conditionLabels[lang][item.condition_status]
+            : (conditionLabels['en'][item.condition_status] || { text: item.condition_status, color: '#6b7280' });
+        conditionBadge = '<div class="card-condition-badge" style="background: ' + condition.color + '; color: white;">' + condition.text + '</div>';
+    }
+    
+    var interestedClass = item.isInterested ? 'active' : '';
+    card.innerHTML = 
+    '<div class="card-glow" style="background: ' + item.color + '"></div>' +
+    '<div class="card-interested ' + interestedClass + '" onclick="toggleInterested(event, ' + item.id + ')">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke-width="2">' +
+            '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>' +
+        '</svg>' +
+    '</div>' +
+    '<img class="card-image" src="' + escapeHtml(item.image || '') + '" alt="' + escapeHtml(item.title) + '" onerror="this.style.display=\'none\'">' +
+    '<div class="card-badge" style="color: ' + badgeColor + '">' + badgeText + '</div>' +
+    conditionBadge +
+    '<div class="card-content">' +
+        '<h3 class="card-title">' + escapeHtml(item.title) + '</h3>' +
+        '<p class="card-desc">' + escapeHtml(item.description) + '</p>' +
+        '<div class="card-footer">' +
+            '<div class="card-user">' +
+                avatarHtml +
+                '<div class="user-info">' +
+                    '<h4>' + escapeHtml(item.user) + '</h4>' +
+                    '<div class="user-location">' +
+                        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                            '<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>' +
+                        '</svg>' +
+                        escapeHtml(item.department) +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="card-time" data-created-at="' + (item.created_at || '') + '">' + (item.created_at ? formatTimeAgo(item.created_at) : (item.time || 'just now')) + '</div>' +
+        '</div>' +
+    '</div>' +
+    '<div class="card-overlay">' +
+            '<button class="btn-details">' + t('viewDetails') + '</button>' +
+    '</div>';
+    
+    return card;
+}
+
+// Start auto-refresh for items
+function startItemsAutoRefresh() {
+    if (itemsRefreshInterval) return; // Already running
+    
+    // Initialize known IDs from current items
+    initKnownItemIds();
+    
+    itemsRefreshInterval = setInterval(async function() {
+        // Only refresh if page is visible and user is on main feed
+        if (document.hidden) return;
+        if (!document.getElementById('grid')) return;
+        
+        try {
+            await silentRefreshItems();
+        } catch (e) {
+            console.error('Auto-refresh items failed:', e);
+        }
+    }, ITEMS_REFRESH_DELAY);
+}
+
+// Stop auto-refresh
+function stopItemsAutoRefresh() {
+    if (itemsRefreshInterval) {
+        clearInterval(itemsRefreshInterval);
+        itemsRefreshInterval = null;
+    }
+}
+
+// Handle visibility change - pause/resume refresh
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        // Page is hidden, no need to refresh
+    } else {
+        // Page is visible again, do silent refresh
+        if (document.getElementById('grid')) {
+            silentRefreshItems();
+        }
+    }
+});
+
 // Add Item Modal Functions
 async function openAddModal() {
     // Check if user is authenticated
@@ -91,6 +342,8 @@ async function loadItems() {
         if (response.success && response.data) {
             items = response.data;
             renderItems();
+            // Initialize known item IDs after first load
+            initKnownItemIds();
         } else {
             throw new Error(response.message || 'Failed to load items');
         }
@@ -100,6 +353,7 @@ async function loadItems() {
         // Fallback to empty array
         items = [];
         renderItems();
+        initKnownItemIds();
     }
 }
 
@@ -196,22 +450,22 @@ function renderItems() {
                 '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>' +
             '</svg>' +
         '</div>' +
-        '<img class="card-image" src="' + (item.image || '') + '" alt="' + item.title + '" onerror="this.style.display=\'none\'">' +
+        '<img class="card-image" src="' + escapeHtml(item.image || '') + '" alt="' + escapeHtml(item.title) + '" onerror="this.style.display=\'none\'">' +
         '<div class="card-badge" style="color: ' + badgeColor + '">' + badgeText + '</div>' +
         conditionBadge +
         '<div class="card-content">' +
-            '<h3 class="card-title">' + item.title + '</h3>' +
-            '<p class="card-desc">' + item.description + '</p>' +
+            '<h3 class="card-title">' + escapeHtml(item.title) + '</h3>' +
+            '<p class="card-desc">' + escapeHtml(item.description) + '</p>' +
             '<div class="card-footer">' +
                 '<div class="card-user">' +
                     avatarHtml +
                     '<div class="user-info">' +
-                        '<h4>' + item.user + '</h4>' +
+                        '<h4>' + escapeHtml(item.user) + '</h4>' +
                         '<div class="user-location">' +
                             '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
                                 '<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>' +
                             '</svg>' +
-                            item.department +
+                            escapeHtml(item.department) +
                         '</div>' +
                     '</div>' +
                 '</div>' +
@@ -225,6 +479,12 @@ function renderItems() {
     if (grid) {
         grid.appendChild(card);
     }
+    
+    // Auto-translate title and description if needed (not the author)
+    var userLang = (window.getCurrentLanguage ? window.getCurrentLanguage() : 'en') || 'en';
+    
+    // Translate the card content (this function handles closure properly)
+    translateItemCard(card, item, userLang);
 });
 
 // Show empty state if no items are visible
@@ -258,11 +518,13 @@ if (document.readyState === 'loading') {
         initializeItemsGrid();
         renderItems();
         applyTranslations();
+        startItemsAutoRefresh();
     });
 } else {
     initializeItemsGrid();
     renderItems();
     applyTranslations();
+    startItemsAutoRefresh();
 }
 
 var currentItem = null;
@@ -310,7 +572,6 @@ async function handleAddItem(event) {
     
     // Prevent multiple submissions
     if (isSubmittingItem) {
-        console.log('Item submission already in progress, ignoring...');
         return;
     }
     
@@ -369,23 +630,12 @@ async function handleAddItem(event) {
         itemData.department = itemDepartment;
     }
     
-    console.log('Creating item with ' + imagesArray.length + ' images:', {
-        title: itemData.title,
-        type: itemData.type,
-        imagesCount: imagesArray.length,
-        images: imagesArray.map(function(img, idx) { return 'Image ' + idx + ': ' + img.substring(0, 50) + '...'; })
-    });
-    
     try {
         const response = await itemsAPI.create(itemData);
         
         if (response.success && response.data) {
             var newItem = response.data;
-            console.log('Item created successfully:', newItem);
-            console.log('Item ID:', newItem.id);
-            console.log('Item images:', newItem.images);
             
-            // Reset images array
             uploadedImages = [];
             
             // Close modal and reset form
@@ -397,17 +647,13 @@ async function handleAddItem(event) {
             // Reload items from API to show the new item
             await loadItems();
             
-            // Update times immediately after loading new items (multiple times to ensure it works)
             setTimeout(function() {
-                console.log('First updateItemTimes call after item creation');
                 updateItemTimes();
             }, 100);
             setTimeout(function() {
-                console.log('Second updateItemTimes call after item creation');
                 updateItemTimes();
             }, 1000);
             setTimeout(function() {
-                console.log('Third updateItemTimes call after item creation');
                 updateItemTimes();
             }, 5000);
         } else {

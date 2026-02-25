@@ -28,7 +28,8 @@ function validateUniversityEmail($email) {
     if (count($emailParts) !== 2) {
         return [
             'valid' => false,
-            'message' => 'Invalid email format'
+            'message' => 'Format d\'email invalide. Veuillez entrer une adresse email valide.',
+            'error_type' => 'invalid_format'
         ];
     }
     
@@ -58,7 +59,8 @@ function validateUniversityEmail($email) {
         
         return [
             'valid' => false,
-            'message' => 'Your university is not yet a partner. Please contact us to add your university.'
+            'message' => 'Votre université n\'est pas encore partenaire. Contactez-nous pour ajouter votre université à LetShare.',
+            'error_type' => 'university_not_partner'
         ];
     } catch (PDOException $e) {
         error_log('Database query error in validateUniversityEmail: ' . $e->getMessage());

@@ -32,6 +32,8 @@ require_once '../config.php';
 
 try {
     $user = requireAuth();
+    // Require CSRF token for POST request
+    requireCSRFToken();
 } catch (Exception $authError) {
     error_log('Auth error in push subscribe: ' . $authError->getMessage());
     sendResponse(false, 'Authentication required: ' . $authError->getMessage(), null, 401);

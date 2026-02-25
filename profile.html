@@ -7,11 +7,22 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>My Profile - LetShare</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="css/profile.css">
+    <link rel="stylesheet" href="css/profile_loading.css">
 </head>
 <body>
     <div class="bg-blob blob-1"></div>
     <div class="bg-blob blob-2"></div>
+
+    <script>
+    window.addEventListener('load', function() {
+        if (typeof loadUserProfile === 'function') {
+            loadUserProfile();
+        }
+    });
+    </script>
 
     <div class="container">
         <header>
@@ -47,7 +58,8 @@
         </header>
 
         <div class="profile-header">
-            <div class="profile-avatar">FA</div>
+            <div class="profile-header profile-loading">
+                <div class="profile-avatar">FA</div>
             <div class="university-logo-container" id="universityLogoContainer" style="display: none;">
                 <img id="universityLogo" src="" alt="University Logo" style="max-width: 80px; max-height: 40px; object-fit: contain; margin-top: 10px;">
             </div>
@@ -76,14 +88,14 @@
             </div>
         </div>
 
-        <div class="tabs">
+        <div class="tabs profile-loading">
             <button class="tab active" onclick="switchTab('posted', this)" data-i18n="myPosts">My Posts</button>
             <button class="tab" onclick="switchTab('interested', this)" data-i18n="interested">Interested</button>
             <button class="tab" onclick="switchTab('messages', this)" data-i18n="requests">Requests</button>
             <button class="tab" onclick="switchTab('history', this)" data-i18n="history">History</button>
         </div>
 
-        <div class="tabs-container">
+        <div class="tabs-container profile-loading">
         <div id="posted" class="content-section active">
             <div class="items-grid" id="postedItems">
                 <!-- Items will be loaded dynamically -->
@@ -141,13 +153,38 @@
         </div>
     </div>
 
+    <!-- Confirmation Modal -->
+    <div class="confirmation-modal" id="confirmationModal" style="display: none;">
+        <div class="confirmation-modal-content">
+            <div class="confirmation-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                </svg>
+            </div>
+            <h2 id="confirmationTitle">Confirm Action</h2>
+            <p id="confirmationMessage">Are you sure you want to proceed?</p>
+            <div class="confirmation-buttons">
+                <button class="btn-cancel" onclick="closeConfirmationModal()">Cancel</button>
+                <button class="btn-confirm-action" id="confirmActionBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div class="toast" id="toast">
         <span id="toastMessage"></span>
     </div>
 
+    <!-- Pusher SDK for real-time chat -->
+    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+    
     <script src="js/translations.js"></script>
+    <script src="js/utils.js"></script>
     <script src="js/api.js"></script>
+    <script src="js/pusher-chat.js"></script>
+    <script src="js/conversation-modal.js"></script>
     <script src="js/profile.js"></script>
 </body>
 </html>

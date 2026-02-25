@@ -92,7 +92,7 @@ try {
     
     // Terms acceptance timestamp
     $termsAcceptedAt = date('Y-m-d H:i:s');
-    $termsVersion = '2026-01-12'; // Version of terms accepted
+    $termsVersion = TERMS_VERSION; // Version of terms accepted
     
     // Insert new user with university_id and terms acceptance
     $stmt = $pdo->prepare("INSERT INTO users (name, email, password, department, university_id, language, auth_provider, google_id, email_verified, email_verification_token, email_verification_token_expires_at, terms_accepted_at, terms_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");

@@ -4,7 +4,8 @@
  * Handles sending push notifications to browser push services
  */
 
-require_once '../config.php';
+// Use absolute path to config.php
+require_once __DIR__ . '/../config.php';
 
 /**
  * Send push notification to a subscription
@@ -20,16 +21,12 @@ function sendPushToSubscription($subscription, $title, $message, $data = []) {
         if (class_exists('Minishlink\WebPush\WebPush')) {
             return sendPushWithLibrary($subscription, $title, $message, $data);
         } else {
-            // Fallback cURL implementation doesn't work properly without proper encryption
-            // Return a clear error message indicating library is needed
-            error_log('web-push-php library not found. Install it with: composer require minishlink/web-push');
             return [
                 'success' => false, 
-                'message' => 'Push notifications require the web-push-php library. Please install it with: composer require minishlink/web-push'
+                'message' => 'Push notifications require the web-push-php library'
             ];
         }
     } catch (Exception $e) {
-        error_log('Error in sendPushToSubscription: ' . $e->getMessage());
         return ['success' => false, 'message' => $e->getMessage()];
     }
 }
@@ -39,6 +36,14 @@ function sendPushToSubscription($subscription, $title, $message, $data = []) {
  */
 function sendPushWithLibrary($subscription, $title, $message, $data = []) {
     try {
+        // Validate VAPID keys are configured
+        if (empty(VAPID_PUBLIC_KEY) || empty(VAPID_PRIVATE_KEY) || empty(APP_BASE_URL)) {
+            return [
+                'success' => false,
+                'message' => 'VAPID keys not configured in .env file'
+            ];
+        }
+        
         $auth = [
             'VAPID' => [
                 'subject' => APP_BASE_URL,
@@ -75,7 +80,7 @@ function sendPushWithLibrary($subscription, $title, $message, $data = []) {
                     $statusCode = $report->getResponse()->getStatusCode();
                 }
                 
-                // Check if subscription is expired (410 Gone) or invalid (404 Not Found)
+                // Check if subscription is expired
                 if ($statusCode === 410 || $statusCode === 404 || 
                     strpos($reason, '410') !== false || 
                     strpos($reason, 'Gone') !== false ||
@@ -89,15 +94,13 @@ function sendPushWithLibrary($subscription, $title, $message, $data = []) {
                     ];
                 }
                 
-                error_log('Push notification failed: ' . $reason);
                 return ['success' => false, 'message' => $reason];
             }
         }
         
         return ['success' => true, 'message' => 'Push notification sent'];
     } catch (Exception $e) {
-        error_log('Error with web-push library: ' . $e->getMessage());
-        throw $e;
+        return ['success' => false, 'message' => $e->getMessage()];
     }
 }
 

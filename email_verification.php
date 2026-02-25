@@ -141,6 +141,12 @@ header('ngrok-skip-browser-warning: true');
 </head>
 <body>
     <div class="verification-container">
+        <!-- Spam Warning (soft red) -->
+        <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 16px; margin-bottom: 30px; display: flex; gap: 12px; align-items: flex-start;">
+            <span style="font-size: 24px; flex-shrink: 0;">⚠️</span>
+            <div style="font-size: 14px; color: #dc2626; line-height: 1.5;">
+                <strong>N'oublie pas:</strong> Les emails de LetShare peuvent aller dans tes <strong>dossier SPAM</strong> ou <strong>Promotions</strong>. Vérifie-les si tu ne reçois rien!</div>
+        </div>
         
         <?php
         $status = $_GET['status'] ?? 'error';

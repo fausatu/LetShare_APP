@@ -4,6 +4,11 @@ require_once 'config.php';
 $method = $_SERVER['REQUEST_METHOD'];
 $user = requireAuth();
 
+// Require CSRF token for state-changing requests
+if ($method !== 'GET') {
+    requireCSRFToken();
+}
+
 try {
     $pdo = getDBConnection();
     
@@ -30,11 +35,12 @@ try {
             $ids = array_map('intval', explode(',', $userIds));
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
             
+            $onlineThreshold = ONLINE_THRESHOLD_SECONDS;
             $stmt = $pdo->prepare("
                 SELECT id, name, last_seen,
                        CASE 
                            WHEN last_seen IS NULL THEN 0
-                           WHEN TIMESTAMPDIFF(SECOND, last_seen, NOW()) <= 300 THEN 1
+                           WHEN TIMESTAMPDIFF(SECOND, last_seen, NOW()) <= $onlineThreshold THEN 1
                            ELSE 0
                        END as is_online
                 FROM users

@@ -1,0 +1,12 @@
+.profile-header.profile-loading, .tabs.profile-loading, .tabs-container.profile-loading {
+    visibility: hidden;
+    opacity: 0;
+}
+
+body.profile-loaded .profile-header,
+body.profile-loaded .tabs,
+body.profile-loaded .tabs-container {
+    visibility: visible;
+    opacity: 1;
+    transition: opacity 0.2s;
+}

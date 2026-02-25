@@ -2,11 +2,14 @@
 // ==================================
 
 var currentFeedbackConversation = null;
+var currentFeedbackConversationId = null;
 var selectedFeedbackType = null;
 var selectedRating = 0;
 
 function openFeedbackModal(conversation) {
     currentFeedbackConversation = conversation;
+    // Prefer database id for API calls
+    currentFeedbackConversationId = conversation.dbId || conversation.conversationId || conversation.id || null;
     
     // Get the other user's name
     var currentUser = getCurrentUserSync();
@@ -74,6 +77,7 @@ function openFeedbackModal(conversation) {
 function closeFeedbackModal() {
     document.getElementById('feedbackModal').classList.remove('active');
     currentFeedbackConversation = null;
+    currentFeedbackConversationId = null;
     selectedFeedbackType = null;
     selectedRating = 0;
 }
@@ -115,6 +119,12 @@ async function submitFeedback(event) {
         showToast('Error: No conversation selected');
         return;
     }
+
+    if (!currentFeedbackConversationId) {
+        showToast('Error: Conversation information missing');
+        console.error('Missing conversation id for feedback:', currentFeedbackConversation);
+        return;
+    }
     
     var feedbackType = selectedFeedbackType;
     var rating = selectedRating;
@@ -132,13 +142,22 @@ async function submitFeedback(event) {
     }
     
     try {
+        console.log('Submitting feedback with conversationId:', currentFeedbackConversationId);
+        console.log('Full conversation object:', currentFeedbackConversation);
+        
         const response = await feedbackAPI.submit(
-            currentFeedbackConversation.id,
+            currentFeedbackConversationId,
             feedbackType,
             rating,
             feedbackText,
             wouldRecommend
         );
+        
+        if (!response) {
+            showToast('Error submitting feedback. Please try again.');
+            console.error('Feedback API returned null response');
+            return;
+        }
         
         if (response.success) {
             showToast('Thank you for your feedback!');

@@ -2,6 +2,10 @@
 require_once '../config.php';
 
 $user = requireAuth();
+
+// Require CSRF token for POST request
+requireCSRFToken();
+
 $data = getRequestData();
 $userId = $data['userId'] ?? $user['id'];
 

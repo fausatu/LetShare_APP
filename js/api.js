@@ -15,22 +15,23 @@ const API_BASE_URL = (function() {
     
     // Extract the project folder name from the pathname (for WAMP/localhost)
     // e.g., /Letshare_app/index.html -> Letshare_app
-    const projectFolder = pathname.split('/')[1] || 'Letshare_app';
+    const firstSegment = pathname.split('/')[1] || '';
+    const projectFolder = (firstSegment && !firstSegment.includes('.')) ? firstSegment : '';
     
     // If accessing via localhost or 127.0.0.1 with a different port (Live Server, etc.)
     if ((hostname === 'localhost' || hostname === '127.0.0.1') && (port === '5500' || port === '3000' || port === '8080')) {
-        return 'http://localhost/' + projectFolder + '/api';
+        return 'http://localhost/' + (projectFolder ? projectFolder + '/' : '') + 'api';
     }
     
     // If accessing via local network IP (192.168.x.x)
     if (hostname.match(/^192\.168\.\d+\.\d+$/)) {
-        return 'http://' + hostname + '/' + projectFolder + '/api';
+        return 'http://' + hostname + '/' + (projectFolder ? projectFolder + '/' : '') + 'api';
     }
     
     // If accessing via ngrok, localtunnel, or other remote service
     // Use the same protocol and hostname as the current page
     if (hostname.includes('ngrok') || hostname.includes('loca.lt') || hostname.includes('ngrok-free.app') || hostname.includes('ngrok.io')) {
-        return protocol + '//' + hostname + (port ? ':' + port : '') + '/' + projectFolder + '/api';
+        return protocol + '//' + hostname + (port ? ':' + port : '') + '/' + (projectFolder ? projectFolder + '/' : '') + 'api';
     }
     
     // Render.com detection
@@ -45,12 +46,68 @@ const API_BASE_URL = (function() {
     
     // For localhost without special ports (WAMP default)
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        return 'http://localhost/' + projectFolder + '/api';
+        return 'http://localhost/' + (projectFolder ? projectFolder + '/' : '') + 'api';
     }
     
-    // Default: relative path (same origin)
-    return 'api';
+    // Default: same origin + optional project folder
+    return protocol + '//' + hostname + (port ? ':' + port : '') + '/' + (projectFolder ? projectFolder + '/' : '') + 'api';
 })();
+
+/**
+ * CSRF Token Management
+ */
+let csrfToken = null;
+let csrfTokenPromise = null;
+
+/**
+ * Fetch CSRF token from server (cached)
+ */
+async function getCSRFToken() {
+    // Return cached token if available
+    if (csrfToken) {
+        return csrfToken;
+    }
+    
+    // If already fetching, wait for that request
+    if (csrfTokenPromise) {
+        return csrfTokenPromise;
+    }
+    
+    // Fetch new token
+    csrfTokenPromise = (async () => {
+        try {
+            const url = API_BASE_URL + '/csrf.php';
+            const response = await fetch(url, {
+                method: 'GET',
+                credentials: 'include',
+                cache: 'no-cache'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.data && data.data.csrf_token) {
+                    csrfToken = data.data.csrf_token;
+                    return csrfToken;
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to fetch CSRF token:', error);
+        }
+        return null;
+    })();
+    
+    const token = await csrfTokenPromise;
+    csrfTokenPromise = null;
+    return token;
+}
+
+/**
+ * Clear cached CSRF token (call after logout or on 403 errors)
+ */
+function clearCSRFToken() {
+    csrfToken = null;
+    csrfTokenPromise = null;
+}
 
 /**
  * Make API request
@@ -121,11 +178,24 @@ async function apiRequest(endpoint, options = {}) {
         }
     };
     
+    // Add CSRF token for state-changing requests (POST, PUT, DELETE, PATCH)
+    const method = (options.method || 'GET').toUpperCase();
+    const needsCSRF = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method);
+    
+    let csrfHeader = {};
+    if (needsCSRF) {
+        const token = await getCSRFToken();
+        if (token) {
+            csrfHeader = { 'X-CSRF-Token': token };
+        }
+    }
+    
     const config = {
         ...defaultOptions,
         ...options,
         headers: {
             ...defaultOptions.headers,
+            ...csrfHeader,
             ...(options.headers || {})
         }
     };
@@ -136,71 +206,43 @@ async function apiRequest(endpoint, options = {}) {
     }
     
     try {
-        console.log('API Request:', url, config.method || 'GET', config.body);
-        console.log('API Request URL (decoded):', decodeURIComponent(url));
-        console.log('API Request Origin:', window.location.origin);
-        console.log('API Request Headers:', config.headers);
-        console.log('API Request Config:', {
-            method: config.method || 'GET',
-            mode: config.mode,
-            credentials: config.credentials,
-            headers: config.headers
-        });
-        
         const response = await fetch(url, config);
-        
-        console.log('API Response received:', {
-            status: response.status,
-            statusText: response.statusText,
-            headers: Object.fromEntries(response.headers.entries()),
-            ok: response.ok
-        });
-        
-        console.log('API Response:', response.status, response.statusText, response.headers.get('content-type'));
-        
         // Check if response is actually JSON
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
-            const text = await response.text();
-            console.error('Non-JSON response:', text);
-            throw new Error('Server returned invalid response. Status: ' + response.status + '. Please check the server logs.');
+            return {
+                success: false,
+                message: 'Invalid JSON response',
+                status: response.status,
+                url: url
+            };
         }
-        
         const data = await response.json();
         
-        // Log response data for notifications endpoint
-        if (url.includes('notifications')) {
-            console.log('Notifications API data:', data);
+        // Clear CSRF token on 403 (might be expired)
+        if (response.status === 403 && data.message && data.message.includes('CSRF')) {
+            clearCSRFToken();
         }
         
         if (!response.ok) {
-            throw new Error(data.message || 'API request failed');
+            // Prefer server-provided error payload if present
+            if (data && typeof data === 'object') {
+                return data;
+            }
+            return {
+                success: false,
+                message: 'HTTP ' + response.status,
+                status: response.status,
+                url: url
+            };
         }
-        
         return data;
     } catch (error) {
-        console.error('API Error:', error);
-        console.error('Error details:', {
-            message: error.message,
-            name: error.name,
-            stack: error.stack,
+        return {
+            success: false,
+            message: error && error.message ? error.message : 'Network error',
             url: url
-        });
-        
-        // Provide more helpful error messages
-        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-            console.error('Network error - possible causes:');
-            console.error('1. WAMP server is not running');
-            console.error('2. CORS is blocking the request');
-            console.error('3. URL is incorrect:', url);
-            throw new Error('Cannot connect to server. Please ensure WAMP is running and the API is accessible.');
-        }
-        
-        // If it's a JSON parse error, provide a better message
-        if (error instanceof SyntaxError && error.message.includes('JSON')) {
-            throw new Error('Server returned invalid JSON. Please check the server configuration.');
-        }
-        throw error;
+        };
     }
 }
 
@@ -223,9 +265,12 @@ const authAPI = {
     },
     
     async logout() {
-        return await apiRequest('auth/logout', {
+        const result = await apiRequest('auth/logout', {
             method: 'POST'
         });
+        // Clear CSRF token on logout
+        clearCSRFToken();
+        return result;
     },
     
     async getCurrentUser() {
@@ -569,8 +614,7 @@ async function checkAuth() {
         
         return true;
     } catch (error) {
-        // On any error, assume not authenticated
-        console.error('Auth check failed:', error);
+        // On any error, assume not authenticated (ne rien afficher)
         localStorage.removeItem('currentUser');
         localStorage.removeItem('authToken');
         return false;
@@ -581,7 +625,7 @@ async function checkAuth() {
  * Handle API errors
  */
 function handleAPIError(error) {
-    console.error('API Error:', error);
+    // Ne rien afficher en prod
     
     if (error.message.includes('Authentication required') || error.message.includes('401')) {
         // Redirect to login
@@ -596,6 +640,3 @@ function handleAPIError(error) {
         alert(error.message || 'An error occurred');
     }
 }
-
-
-let bonjour = `bonjour ${nom} ${prenom} comment ça va ?`;

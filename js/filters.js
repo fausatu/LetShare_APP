@@ -107,15 +107,47 @@ function performSearch() {
     }
 }
 
-// Handle Enter key in search input
-document.addEventListener('DOMContentLoaded', function() {
+// Debounce function to limit API calls
+var searchTimeout = null;
+function debounceSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(function() {
+        performSearch();
+    }, 300); // Wait 300ms after user stops typing
+}
+
+// Initialize search input listeners
+function initSearchListeners() {
     var searchInput = document.getElementById('mainSearchInput');
     if (searchInput) {
+        // Real-time search as user types
+        searchInput.addEventListener('input', function(e) {
+            debounceSearch();
+        });
+        
+        // Also support Enter key for immediate search
         searchInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
+                clearTimeout(searchTimeout); // Cancel debounce
                 performSearch();
             }
         });
+    }
+}
+
+// Handle Enter key and real-time search in search input
+document.addEventListener('DOMContentLoaded', function() {
+    initSearchListeners();
+});
+
+// Also try to initialize on window load as a fallback
+window.addEventListener('load', function() {
+    if (!document.getElementById('mainSearchInput')?.hasAttribute('data-listeners-attached')) {
+        initSearchListeners();
+        var searchInput = document.getElementById('mainSearchInput');
+        if (searchInput) {
+            searchInput.setAttribute('data-listeners-attached', 'true');
+        }
     }
 });
 

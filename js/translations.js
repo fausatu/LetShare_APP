@@ -4,9 +4,16 @@
 // Translations for main page
 const translations = {
     en: {
-        heroTitle: "Looking for something?<br>Get it from your mates",
+        heroTitle: "Give, exchange what you don't need,<br>find what you do!",
+        heroSubtitle: "Student Exchange Platform: donate, trade and share books, materials and course notes",
         searchPlaceholder: "Search books, materials, notes...",
         search: "Search",
+        termsModalTitleFirst: "📋 Acceptance Required",
+        termsModalTextFirst: "To use Letshare, you must read and accept our Terms of Service and Privacy Policy.",
+        termsModalTitleUpdate: "📋 Terms Updated",
+        termsModalTextUpdate: "Our Terms of Service and Privacy Policy have been updated. Please read and accept them to continue.",
+        declutterHelp: "Declutter & Help Others",
+        joinCommunity: "Join the Community",
         addNewItem: "Add New Item",
         title: "Title",
         enterItemTitle: "Enter item title",
@@ -71,6 +78,19 @@ const translations = {
         noItemsTitle: "No posts available",
         noItemsMessage: "There are no posts to display at the moment. Check back later!",
         // Notifications
+        itemDeletedSuccess: "Item deleted successfully!",
+        failedToDeleteItem: "Failed to delete item.",
+        errorDeletingItem: "Error deleting item. Please try again.",
+        errorLoadingItems: "Error loading items",
+        pleaseTryAgainLater: "Please try again later",
+        errorLoadingMessages: "Error loading messages",
+        requestAccepted: "Request accepted.",
+        errorAcceptingRequest: "Error accepting request. Please try again.",
+        errorSendingMessage: "Error sending message. Please try again.",
+        errorReloadingConversation: "Error reloading conversation. Please try again.",
+        interestedItemRemoved: "Item removed from interested list!",
+        failedToRemoveInterested: "Failed to remove item from interested list.",
+        errorRemovingInterested: "Error removing item. Please try again.",
         newMessage: "New message",
         newRequest: "New request",
         requestAccepted: "Request accepted",
@@ -79,11 +99,25 @@ const translations = {
         newReview: "New review",
         itemDeleted: "Item deleted",
         conversationCancelled: "Conversation cancelled",
+        confirmationNeeded: "Confirmation Needed",
+        exchangeAutoCompleted: "Exchange Auto Completed",
+        exchangeReminder: "Exchange Confirmation Reminder",
+        itemNoLongerAvailable: "Item No Longer Available",
         notifications: "Notifications",
         noNotifications: "No notifications yet",
         loadingNotifications: "Loading notifications...",
         errorLoadingNotifications: "Error loading notifications",
+        errorLoadingMessages: "Error loading messages",
         markAllAsRead: "Mark all as read",
+        // Notification message translations
+        interestedInDonation: "is interested in your donation:",
+        interestedInLoan: "is interested in your loan:",
+        interestedInItem: "is interested in:",
+        requestAcceptedMsg: "Your request for",
+        requestRejectedMsg: "Your request for",
+        requestNoLongerAvailableMsg: "is no longer available as another request has been accepted.",
+        reviewReceived: "left you a review for",
+        confirmationNeededMsg: "Your exchange partner has confirmed completion. Please confirm on your side too.",
         // Profile page
         settings: "Settings",
         back: "Back",
@@ -211,12 +245,47 @@ const translations = {
         termsAcceptance: "Terms Acceptance",
         loadingTermsInfo: "Loading...",
         termsAcceptedOn: "You accepted the terms on",
-        downloadPdfBtn: "PDF"
+        downloadPdfBtn: "PDF",
+        // Modal translations
+        rejectRequestTitle: "Reject Request",
+        rejectRequestConfirm: "Are you sure you want to reject this request for",
+        actionCannotBeUndone: "This action cannot be undone",
+        requesterWillBeNotified: "The requester will be notified that their request has been rejected.",
+        cancel: "Cancel",
+        rejectRequest: "Reject Request",
+        deleteConversationTitle: "Delete Conversation",
+        deleteConversationConfirm: "Are you sure you want to delete this conversation about",
+        hideOnlyForYou: "This will only hide it for you",
+        otherPersonCanStillSee: "The other person will still be able to see the conversation and send messages.",
+        deleteConversation: "Delete Conversation",
+
+        //notifications
+        tryAgain: "Please try again"
     },
     fr: {
-        heroTitle: "Vous cherchez quelque chose ?<br>Obtenez-le de vos camarades",
+        heroTitle: "Donnez, échangez ce dont vous n'avez plus besoin,<br>trouvez ce qu'il vous faut !",
+        heroSubtitle: "Plateforme d'échange entre étudiants : donnez, troquez et partagez livres, matériel et notes de cours",
         searchPlaceholder: "Rechercher des livres, matériels, notes...",
+        itemDeletedSuccess: "Article supprimé avec succès !",
+        failedToDeleteItem: "Échec de la suppression de l'article.",
+        errorDeletingItem: "Erreur lors de la suppression de l'article. Veuillez réessayer.",
+        errorLoadingItems: "Erreur lors du chargement des articles",
+        pleaseTryAgainLater: "Veuillez réessayer plus tard",
+        errorLoadingMessages: "Erreur lors du chargement des messages",
+        requestAccepted: "Demande acceptée.",
+        errorAcceptingRequest: "Erreur lors de l'acceptation de la demande. Veuillez réessayer.",
+        errorSendingMessage: "Erreur lors de l'envoi du message. Veuillez réessayer.",
+        errorReloadingConversation: "Erreur lors du rechargement de la conversation. Veuillez réessayer.",
         search: "Rechercher",
+        interestedItemRemoved: "Article retiré de la liste des intéressés !",
+        failedToRemoveInterested: "Échec du retrait de l'article de la liste des intéressés.",
+        errorRemovingInterested: "Erreur lors du retrait de l'article. Veuillez réessayer.",
+        termsModalTitleFirst: "📋 Acceptation requise",
+        termsModalTextFirst: "Pour utiliser Letshare, vous devez lire et accepter nos Conditions Générales d'Utilisation et notre Politique de confidentialité.",
+        termsModalTitleUpdate: "📋 Conditions mises à jour",
+        termsModalTextUpdate: "Nos CGU et Politique de confidentialité ont été mises à jour. Veuillez les lire et les accepter pour continuer.",
+        declutterHelp: "Désencombrer & Aider les Autres",
+        joinCommunity: "Rejoindre la Communauté",
         addNewItem: "Ajouter un nouvel article",
         title: "Titre",
         enterItemTitle: "Entrez le titre de l'article",
@@ -289,11 +358,25 @@ const translations = {
         newReview: "Nouvel avis",
         itemDeleted: "Article supprimé",
         conversationCancelled: "Conversation annulée",
+        confirmationNeeded: "Confirmation requise",
+        exchangeAutoCompleted: "Échange complété automatiquement",
+        exchangeReminder: "Rappel de confirmation d'échange",
+        itemNoLongerAvailable: "Article non disponible",
         notifications: "Notifications",
         noNotifications: "Aucune notification pour le moment",
         loadingNotifications: "Chargement des notifications...",
         errorLoadingNotifications: "Erreur de chargement des notifications",
+        errorLoadingMessages: "Erreur de chargement des messages",
         markAllAsRead: "Tout marquer comme lu",
+        // Notification message translations
+        interestedInDonation: "est intéressé(e) par votre don :",
+        interestedInLoan: "est intéressé(e) par votre prêt :",
+        interestedInItem: "est intéressé(e) par :",
+        requestAcceptedMsg: "Votre demande pour",
+        requestRejectedMsg: "Votre demande pour",
+        requestNoLongerAvailableMsg: "n'est plus disponible car une autre demande a été acceptée.",
+        reviewReceived: "vous a laissé un avis pour",
+        confirmationNeededMsg: "Votre partenaire d'échange a confirmé. Merci de confirmer de votre côté également.",
         // Profile page
         settings: "Paramètres",
         back: "Retour",
@@ -421,32 +504,139 @@ const translations = {
         accountDeleted: "Compte supprimé. Redirection...",
         fillAllFields: "Veuillez remplir tous les champs",
         passwordsNoMatch: "Les nouveaux mots de passe ne correspondent pas",
-        passwordTooShort: "Le mot de passe doit contenir au moins 6 caractères"
+        passwordTooShort: "Le mot de passe doit contenir au moins 6 caractères",
+        // Modal translations
+        rejectRequestTitle: "Refuser la demande",
+        rejectRequestConfirm: "Êtes-vous sûr de vouloir refuser cette demande pour",
+        actionCannotBeUndone: "Cette action est irréversible",
+        requesterWillBeNotified: "Le demandeur sera notifié que sa demande a été refusée.",
+        cancel: "Annuler",
+        rejectRequest: "Refuser la demande",
+        deleteConversationTitle: "Supprimer la conversation",
+        deleteConversationConfirm: "Êtes-vous sûr de vouloir supprimer cette conversation à propos de",
+        hideOnlyForYou: "Cela ne la masquera que pour vous",
+        otherPersonCanStillSee: "L'autre personne pourra toujours voir la conversation et envoyer des messages.",
+        deleteConversation: "Supprimer la conversation",
+
+        //notifications
+        tryAgain: "Veuillez Réessayer",
     }
 };
 
 // Get current language
 function getCurrentLanguage() {
-    var settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
-    return settings.language || 'en';
+    try {
+        var settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+        if (settings.language) {
+            return settings.language;
+        }
+    } catch (e) {
+        // Continue with browser language detection
+    }
+    
+    // Fallback: detect browser language
+    var browserLang = navigator.language || navigator.userLanguage;
+    
+    // Extract language code (e.g., 'fr' from 'fr-FR')
+    var langCode = (browserLang ? browserLang.split('-')[0].toLowerCase() : 'en');
+    
+    // Check if we support this language
+    var supportedLangs = ['en', 'fr'];
+    if (supportedLangs.includes(langCode)) {
+        return langCode;
+    }
+    
+    return 'en';
 }
 
 // Translate notification titles
 function translateNotificationTitle(title) {
     var titleMap = {
         'New message': 'newMessage',
+        'Nouveau message': 'newMessage',
         'New request': 'newRequest',
+        'Nouvelle demande': 'newRequest',
         'New request received': 'newRequest',
         'Request accepted': 'requestAccepted',
+        'Demande acceptée': 'requestAccepted',
         'Request rejected': 'requestRejected',
+        'Demande refusée': 'requestRejected',
         'Exchange completed': 'exchangeCompleted',
+        'Échange terminé': 'exchangeCompleted',
         'New review': 'newReview',
+        'Nouvel avis': 'newReview',
         'Item deleted': 'itemDeleted',
-        'Conversation cancelled': 'conversationCancelled'
+        'Article supprimé': 'itemDeleted',
+        'Conversation cancelled': 'conversationCancelled',
+        'Conversation annulée': 'conversationCancelled',
+        'Confirmation Needed': 'confirmationNeeded',
+        'Confirmation requise': 'confirmationNeeded',
+        'Exchange Auto Completed': 'exchangeAutoCompleted',
+        'Échange complété automatiquement': 'exchangeAutoCompleted',
+        'Exchange Confirmation Reminder': 'exchangeReminder',
+        'Rappel de confirmation d\'échange': 'exchangeReminder',
+        'Item No Longer Available': 'itemNoLongerAvailable',
+        'Article non disponible': 'itemNoLongerAvailable'
     };
     
     var key = titleMap[title];
     return key ? t(key) : title;
+}
+
+// Translate notification messages
+function translateNotificationMessage(message) {
+    if (!message) return message;
+    
+    // Pattern 1: "{name} is interested in your donation: {item}"
+    var match1EN = message.match(/^(.+) is interested in your donation: (.+)$/);
+    if (match1EN) {
+        return match1EN[1] + ' ' + t('interestedInDonation') + ' ' + match1EN[2];
+    }
+    
+    // Pattern 1 FR: "{name} est intéressé(e) par votre don : {item}"
+    var match1FR = message.match(/^(.+) est intéressé\(e\) par votre don : (.+)$/);
+    if (match1FR) {
+        return match1FR[1] + ' ' + t('interestedInDonation') + ' ' + match1FR[2];
+    }
+    
+    // Pattern 2: "{name} is interested in your loan: {item}"
+    var match2EN = message.match(/^(.+) is interested in your loan: (.+)$/);
+    if (match2EN) {
+        return match2EN[1] + ' ' + t('interestedInLoan') + ' ' + match2EN[2];
+    }
+    
+    // Pattern 2 FR: "{name} est intéressé(e) par votre prêt : {item}"
+    var match2FR = message.match(/^(.+) est intéressé\(e\) par votre prêt : (.+)$/);
+    if (match2FR) {
+        return match2FR[1] + ' ' + t('interestedInLoan') + ' ' + match2FR[2];
+    }
+    
+    // Pattern 3: "Your request for \"{item}\" has been accepted!"
+    var match3EN = message.match(/^Your request for "(.+)" has been accepted!$/);
+    if (match3EN) {
+        return t('requestAcceptedMsg') + ' "' + match3EN[1] + '"';
+    }
+    
+    // Pattern 3 FR: "Votre demande pour \"{item}\" a été acceptée !"
+    var match3FR = message.match(/^Votre demande pour "(.+)" a été acceptée !$/);
+    if (match3FR) {
+        return t('requestAcceptedMsg') + ' "' + match3FR[1] + '"';
+    }
+    
+    // Pattern 4: "Your request for \"{item}\" has been rejected"
+    var match4EN = message.match(/^Your request for "(.+)" has been rejected$/);
+    if (match4EN) {
+        return t('requestRejectedMsg') + ' "' + match4EN[1] + '"';
+    }
+    
+    // Pattern 4 FR: "Votre demande pour \"{item}\" a été refusée"
+    var match4FR = message.match(/^Votre demande pour "(.+)" a été refusée$/);
+    if (match4FR) {
+        return t('requestRejectedMsg') + ' "' + match4FR[1] + '"';
+    }
+    
+    // If no pattern matches, return original message
+    return message;
 }
 
 // Get translation
@@ -517,26 +707,16 @@ function applyTranslations() {
     if (addModalTitle) {
         addModalTitle.textContent = t('addNewItem');
     }
-    
-    var modalLabels = document.querySelectorAll('#addModal .form-label');
-    if (modalLabels.length > 0) {
-        var labels = ['title', 'type', 'description', 'image', 'condition'];
-        modalLabels.forEach(function(label, index) {
-            if (labels[index]) {
-                label.textContent = t(labels[index]);
-            }
-        });
-    }
-    
-    var modalPlaceholders = document.querySelectorAll('#addModal .form-input, #addModal .form-select, #addModal .form-textarea');
-    if (modalPlaceholders.length > 0) {
-        var placeholders = ['enterItemTitle', 'selectType', 'enterDescription'];
-        modalPlaceholders.forEach(function(input, index) {
-            if (placeholders[index] && input.placeholder) {
-                input.placeholder = t(placeholders[index]);
-            }
-        });
-    }
+
+    // Nouvelle logique : chaque label/input avec data-i18n ou data-i18n-placeholder est traduit individuellement
+    document.querySelectorAll('#addModal [data-i18n]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n');
+        if (key) el.textContent = t(key);
+    });
+    document.querySelectorAll('#addModal [data-i18n-placeholder]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n-placeholder');
+        if (key) el.placeholder = t(key);
+    });
     
     var addItemBtn = document.querySelector('#addItemForm button[type="submit"]');
     if (addItemBtn) {

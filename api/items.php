@@ -8,6 +8,8 @@ $method = $_SERVER['REQUEST_METHOD'];
 $user = null;
 if ($method !== 'GET') {
     $user = requireAuth();
+    // Require CSRF token for state-changing requests
+    requireCSRFToken();
 } else {
     // Try to get current user, but don't require it
     $user = getCurrentUser();
@@ -161,20 +163,39 @@ try {
             }
             $items = $stmt->fetchAll();
             
-            // Format items for frontend and get multiple images
-            $formattedItems = array_map(function($item) use ($pdo) {
-                // Get all images for this item
-                $stmt = $pdo->prepare("SELECT image_url FROM item_images WHERE item_id = ? ORDER BY display_order, id");
-                $stmt->execute([$item['id']]);
-                $images = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            // FIX N+1: Fetch all images in a single query
+            $itemIds = array_column($items, 'id');
+            $imagesMap = [];
+            
+            if (!empty($itemIds)) {
+                $placeholders = implode(',', array_fill(0, count($itemIds), '?'));
+                $imgStmt = $pdo->prepare("
+                    SELECT item_id, image_url 
+                    FROM item_images 
+                    WHERE item_id IN ($placeholders) 
+                    ORDER BY item_id, display_order, id
+                ");
+                $imgStmt->execute($itemIds);
+                $allImages = $imgStmt->fetchAll();
                 
-                // Log for debugging
-                error_log('Item ' . $item['id'] . ' - Found ' . count($images) . ' images in item_images table');
+                // Group images by item_id
+                foreach ($allImages as $img) {
+                    $itemId = $img['item_id'];
+                    if (!isset($imagesMap[$itemId])) {
+                        $imagesMap[$itemId] = [];
+                    }
+                    $imagesMap[$itemId][] = $img['image_url'];
+                }
+            }
+            
+            // Format items for frontend
+            $formattedItems = array_map(function($item) use ($imagesMap) {
+                // Get images from map (already fetched in single query)
+                $images = $imagesMap[$item['id']] ?? [];
                 
                 // If no images in item_images, use the old image field as fallback
                 if (empty($images) && !empty($item['image'])) {
                     $images = [$item['image']];
-                    error_log('Item ' . $item['id'] . ' - Using fallback single image from items.image field');
                 }
                 
                 // Check if user allows showing their department
@@ -250,9 +271,31 @@ try {
                 sendResponse(false, 'Title and type (donation/exchange) are required', null, 400);
             }
             
+            // Validate title and description length
+            if (strlen($title) > 255) {
+                sendResponse(false, 'Title is too long (max 255 characters)', null, 400);
+            }
+            if (strlen($description) > 5000) {
+                sendResponse(false, 'Description is too long (max 5000 characters)', null, 400);
+            }
+            
             // If images array is empty but single image is provided, use it
             if (empty($images) && !empty($image)) {
                 $images = [$image];
+            }
+            
+            // Validate images
+            $maxImages = 5;
+            $maxImageSize = 5 * 1024 * 1024; // 5MB per image (base64 encoded)
+            
+            if (count($images) > $maxImages) {
+                sendResponse(false, 'Too many images (max ' . $maxImages . ')', null, 400);
+            }
+            
+            foreach ($images as $index => $img) {
+                if (!empty($img) && strlen($img) > $maxImageSize) {
+                    sendResponse(false, 'Image ' . ($index + 1) . ' is too large (max 5MB)', null, 400);
+                }
             }
             
             $color = $type === 'donation' 
@@ -495,12 +538,16 @@ try {
                 // Create notification (one notification per user, regardless of whether they have both interested and conversation)
                 try {
                     error_log('Creating notification for user ' . $userId);
+                    $userLang = getUserLanguage($pdo, $userId);
+                    $notifTitle = getNotifText('item_no_longer_available', $userLang);
+                    $notifMsg = getNotifText('item_no_longer_available_msg', $userLang, ['type' => $itemTypeText, 'item' => $itemTitle]);
+                    
                     $notificationId = createNotification(
                         $pdo, 
                         $userId, 
                         'item_deleted', 
-                        'Item No Longer Available', 
-                        'The ' . $itemTypeText . ' "' . $itemTitle . '" is no longer available.',
+                        $notifTitle, 
+                        $notifMsg,
                         $itemId, 
                         null, 
                         $user['id']

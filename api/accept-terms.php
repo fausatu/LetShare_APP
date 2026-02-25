@@ -4,6 +4,9 @@ require_once 'config.php';
 // Check authentication
 requireAuth();
 
+// Require CSRF token
+requireCSRFToken();
+
 $userId = $_SESSION['user_id'];
 
 try {
@@ -11,7 +14,7 @@ try {
     
     // Update terms acceptance
     $termsAcceptedAt = date('Y-m-d H:i:s');
-    $termsVersion = '2026-01-12';
+    $termsVersion = TERMS_VERSION;
     
     $stmt = $pdo->prepare("UPDATE users SET terms_accepted_at = ?, terms_version = ? WHERE id = ?");
     $stmt->execute([$termsAcceptedAt, $termsVersion, $userId]);

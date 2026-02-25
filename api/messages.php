@@ -1,8 +1,14 @@
 <?php
 require_once 'config.php';
+require_once 'pusher_config.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $user = requireAuth();
+
+// Require CSRF token for state-changing requests
+if ($method !== 'GET') {
+    requireCSRFToken();
+}
 
 try {
     $pdo = getDBConnection();
@@ -20,7 +26,9 @@ try {
                        i.color as item_color,
                        i.status as item_status,
                        owner.name as owner_name,
+                       owner.avatar as owner_avatar,
                        requester.name as requester_name,
+                       requester.avatar as requester_avatar,
                        (SELECT text FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
                        (SELECT created_at FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_time,
                        (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id AND to_user_id = ? AND read_status = 0) as unread_count
@@ -39,6 +47,13 @@ try {
             $formattedConversations = array_map(function($conv) use ($userId) {
                 $otherUser = $conv['owner_id'] == $userId ? $conv['requester_name'] : $conv['owner_name'];
                 $isOwner = $conv['owner_id'] == $userId;
+                
+                // Get the avatar of the other user
+                $otherUserAvatar = $isOwner ? $conv['requester_avatar'] : $conv['owner_avatar'];
+                // Ensure avatar is not empty or null
+                if (empty($otherUserAvatar)) {
+                    $otherUserAvatar = null;
+                }
                 
                 $status = $conv['status'] ?? 'pending';
                 $itemStatus = $conv['item_status'] ?? 'active';
@@ -65,6 +80,7 @@ try {
                     'requester' => $conv['requester_name'],
                     'requesterId' => (int)$conv['requester_id'], // Add requesterId for reviews
                     'otherUser' => $otherUser,
+                    'otherUserAvatar' => $otherUserAvatar, // Add other user's avatar
                     'isOwner' => $isOwner,
                     'lastMessage' => $conv['last_message'] ?? 'No messages yet',
                     'lastUpdate' => $conv['last_message_time'] ?? $conv['updated_at'],
@@ -170,14 +186,25 @@ try {
                 error_log('Created new conversation ID: ' . $conversationId);
             }
             
-            // Create message
+            // Create message - read_status = 0 means UNREAD for the recipient
             $stmt = $pdo->prepare("
                 INSERT INTO messages (conversation_id, from_user_id, to_user_id, text, read_status) 
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, 0)
             ");
-            $readStatus = ($requesterId == $user['id']) ? 1 : 0; // Messages sent by requester are auto-read
-            $stmt->execute([$conversationId, $requesterId, $ownerId, $messageText, $readStatus]);
+            $stmt->execute([$conversationId, $requesterId, $ownerId, $messageText]);
+            $messageId = $pdo->lastInsertId();
             error_log('Message created successfully');
+            
+            // Trigger Pusher event for real-time message
+            triggerNewMessage($conversationId, [
+                'id' => (int)$messageId,
+                'conversationId' => (int)$conversationId,
+                'from_user_id' => (int)$requesterId,
+                'to_user_id' => (int)$ownerId,
+                'text' => $messageText,
+                'timestamp' => date('Y-m-d H:i:s'),
+                'read' => false
+            ]);
             
             // Update conversation updated_at
             $stmt = $pdo->prepare("UPDATE conversations SET updated_at = NOW() WHERE id = ?");
@@ -225,11 +252,14 @@ try {
             }
             error_log('Requester name: ' . $requesterName);
             
-            $notificationTitle = 'New request received';
+            // Get owner's language for notification
+            $ownerLang = getUserLanguage($pdo, $ownerId);
+            
+            $notificationTitle = getNotifText('new_request', $ownerLang);
             if ($itemType === 'donation') {
-                $notificationMessage = $requesterName . ' is interested in your donation: ' . $itemTitle;
+                $notificationMessage = getNotifText('interested_in_donation', $ownerLang, ['name' => $requesterName, 'item' => $itemTitle]);
             } else {
-                $notificationMessage = $requesterName . ' wants to exchange for: ' . $itemTitle;
+                $notificationMessage = getNotifText('interested_in_loan', $ownerLang, ['name' => $requesterName, 'item' => $itemTitle]);
             }
             
             error_log('Notification title: ' . $notificationTitle);
@@ -262,7 +292,8 @@ try {
                     if (!function_exists('createNotification')) {
                         error_log('ERROR: createNotification function does not exist!');
                     } else {
-                        $notificationId = createNotification($pdo, $ownerId, 'message', 'New message', $messageText, $itemId, $conversationId, $requesterId);
+                        $messageNotificationTitle = getNotifText('new_message', $ownerLang);
+                        $notificationId = createNotification($pdo, $ownerId, 'message', $messageNotificationTitle, $messageText, $itemId, $conversationId, $requesterId);
                         error_log('SUCCESS: Message notification created with ID: ' . $notificationId);
                     }
                 } catch (Exception $e) {

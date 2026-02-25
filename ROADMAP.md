@@ -18,7 +18,7 @@
 ### 🔄 Améliorations Possibles
 - [ ] **Templates d'emails multilangues** - Français/Anglais selon la préférence utilisateur
 - [ ] **Emails transactionnels personnalisés** - Confirmation d'échange, nouveau message, etc.
-- [ ] **Résumé hebdomadaire par email** - Nouveaux items dans l'université, statistiques
+- [ ] **Résumé hebdomadaire par email** - Nouveaux items dans l'université
 - [ ] **Système de notifications email configurables** - Permettre aux users de choisir quels emails recevoir
 - [ ] **Email de bienvenue amélioré** - Guide de démarrage, astuces, vidéo tutoriel
 - [ ] **Tracking d'ouverture des emails** - Statistiques via Brevo API pour améliorer les templates
@@ -38,11 +38,11 @@
 - [ ] **Sessions multiples** - Gérer les appareils connectés, déconnexion à distance
 - [ ] **Historique de connexions** - IP, date, appareil, localisation
 - [ ] **Détection d'activité suspecte** - Alertes email si connexion inhabituelle
-- [ ] **Rate limiting généralisé** - Sur toutes les API sensibles (login, register, etc.)
+- [ ] **Rate limiting généralisé** - Sur toutes les API sensibles (login, register, etc.):FAIT ✅
 - [ ] **Refresh tokens** - Renouveler JWT sans re-login
 - [ ] **Blacklist de JWT** - Révoquer tokens compromis
 - [ ] **Password strength meter** - Indicateur de force lors de l'inscription
-- [ ] **Blocage automatique après X tentatives** - Protection contre brute force
+- [ ] **Blocage automatique après X tentatives** - Protection contre brute force ✅
 - [ ] **CAPTCHA sur formulaires** - Protection anti-bot (hCaptcha ou reCAPTCHA)
 
 ---
@@ -65,7 +65,7 @@
 - [ ] **Statistiques avancées** - Graphiques, tendances, impact écologique (CO2 économisé)
 - [ ] **Paramètres de confidentialité avancés** - Qui peut voir mon profil, mes items, etc.
 - [ ] **Bloquer des utilisateurs** - Ne plus voir leurs items/messages
-- [ ] **Favoris / Wishlist** - Sauvegarder des items pour plus tard
+- [ ] **Favoris / Wishlist** - Sauvegarder des items pour plus tard ✅
 - [ ] **Alertes personnalisées** - Notifié quand un item recherché est posté
 
 ---
@@ -83,8 +83,8 @@
 - [ ] **Messages vocaux** - Enregistrement audio court
 - [ ] **Réactions rapides** - 👍 ❤️ 😂 sur les messages
 - [ ] **Messages éphémères** - Auto-suppression après X jours/échange terminé
-- [ ] **Typing indicator** - "X est en train d'écrire..."
-- [ ] **Read receipts optionnels** - Vu/Non vu (désactivable dans paramètres)
+- ✅ **Typing indicator** - "X est en train d'écrire..." (Pusher real-time)
+- ✅ **Read receipts** - Messages marqués comme lus automatiquement
 - [ ] **Recherche dans conversations** - Retrouver un message ancien
 - [ ] **Archiver conversations** - Nettoyer l'interface sans supprimer
 - [ ] **Signalement de messages** - Report spam/inappropriate content
@@ -368,6 +368,13 @@
 - [ ] **AR pour essayage** - Voir vêtement/meuble chez soi avant échange
 - [ ] **Prédiction de demande** - "Ton item sera probablement échangé en 3 jours"
 - [ ] **Smart contracts** - Automatisation complète des échanges
+
+### 🎯 Matching Intelligent & Suggestions Personnalisées
+- [ ] **Sauvegarde des recherches récentes** - Table `user_recent_searches` pour tracker les recherches
+- [ ] **Notifications de matching** - Quand un nouvel item correspond à une recherche récente → notification push "🎯 Nouvel item correspondant à ta recherche"
+- [ ] **Items "À la Une"** - Section spéciale sur la homepage avec items matchés affichés plus grands
+- [ ] **Alertes personnalisées** - "Prévenez-moi quand un item de ce type est posté"
+- [ ] **Score de pertinence** - Algorithme basé sur : recherches récentes, département, historique d'intérêts
 
 ---
 

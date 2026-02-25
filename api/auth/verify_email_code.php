@@ -18,6 +18,12 @@ require_once __DIR__ . '/validate_university_email.php';
 ob_clean();
 
 try {
+    // Rate limiting: 5 attempts per 15 minutes per IP for code verification
+    $clientIP = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    if (!applyRateLimit('email_code_verify', 5, 900, $clientIP, 'Too many attempts. Please try again in {minutes} minute(s).')) {
+        exit;
+    }
+    
     $data = getRequestData();
     $email = trim($data['email'] ?? '');
     $code = trim($data['code'] ?? '');

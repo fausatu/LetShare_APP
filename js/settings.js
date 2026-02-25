@@ -226,53 +226,33 @@
             var previousState = element.classList.contains('active');
             element.classList.toggle('active');
             var isActive = element.classList.contains('active');
-            
             try {
                 var updateData = {};
                 updateData[settingKey] = isActive;
-                
-                var response = await fetch(API_BASE_URL + '/users.php', {
+                // Use apiRequest from api.js for CSRF and error handling
+                var result = await apiRequest('users', {
                     method: 'PUT',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(updateData)
+                    body: updateData
                 });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to update privacy setting');
-                }
-                
-                var result = await response.json();
                 if (result.success && result.data) {
                     // Update localStorage with new user data from API response
                     var currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-                    // Merge all updated fields from API response
                     Object.keys(result.data).forEach(function(key) {
                         if (result.data[key] !== undefined) {
                             currentUser[key] = result.data[key];
                         }
                     });
                     localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                    
-                    // Also store in sessionStorage for immediate cross-page updates
                     sessionStorage.setItem('updatedUserData', JSON.stringify(result.data));
                     sessionStorage.setItem('userProfileJustUpdated', 'true');
-                    
-                    // Update the toggle state based on API response
                     if (result.data[settingKey] === true || result.data[settingKey] === 1) {
                         element.classList.add('active');
                     } else {
                         element.classList.remove('active');
                     }
-                    
-                    // Dispatch event to notify other pages (like profile page)
                     window.dispatchEvent(new CustomEvent('userProfileUpdated', {
                         detail: result.data
                     }));
-                    
-                    // Also dispatch a specific privacy setting changed event
                     window.dispatchEvent(new CustomEvent('privacySettingUpdated', {
                         detail: {
                             setting: settingKey,
@@ -280,7 +260,6 @@
                             userData: result.data
                         }
                     }));
-                    
                     const message = getCurrentLanguage() === 'fr' ? 'Paramètre de confidentialité mis à jour' : 'Privacy setting updated';
                     showToast(message, 'success');
                 } else {
@@ -288,7 +267,6 @@
                 }
             } catch (error) {
                 console.error('Error updating privacy setting:', error);
-                // Revert toggle on error
                 if (previousState) {
                     element.classList.add('active');
                 } else {
@@ -682,19 +660,8 @@
             }
         }
 
-        // Toast notification
-        function showToast(message, type) {
-            var toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = type === 'error' ? 'show' : 'show';
-            toast.style.background = type === 'error' 
-                ? 'linear-gradient(135deg, #ef4444, #dc2626)' 
-                : 'linear-gradient(135deg, #4ade80, #22c55e)';
-            
-            setTimeout(function() {
-                toast.classList.remove('show');
-            }, 3000);
-        }
+        // Use the enhanced showToast from utils.js
+        // function showToast is now available globally with improved styling
 
 
         // Apply language to HTML
@@ -886,9 +853,13 @@
                     credentials: 'include'
                 });
                 
-                const data = await response.json();
+                    if (response.status === 401) {
+                        // Ne rien afficher dans la console si non connecté
+                        return;
+                    }
+                    const data = await response.json();
                 
-                if (data.success && data.data) {
+                    if (data.success && data.data) {
                     const userId = data.data.user.id;
                     
                     if (!userId) {

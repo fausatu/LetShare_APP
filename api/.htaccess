@@ -1,17 +1,27 @@
-# Disable error display (to prevent output before JSON)
-php_flag display_errors Off
-php_flag display_startup_errors Off
-php_value error_reporting E_ALL
-php_flag log_errors On
+# api/.htaccess
+# Purpose: rules for the API when deployed to production (IONOS).
+# Contains CORS and security headers for the API endpoints. This file
+# does NOT contain secret keys or credentials and is safe to commit.
+# If you need environment-specific overrides, use an `api/.htaccess.local`
+# (not tracked) or document changes in `PROJECT_DOCUMENTATION.md`.
 
-# Enable CORS headers for InfinityFree
+# Note: PHP-CGI doesn't support php_flag/php_value directives
+# Error handling is done via ini_set() in each PHP file
+
+# Enable CORS headers for IONOS production
 <IfModule mod_headers.c>
     # Set CORS headers for our domain
-    Header always set Access-Control-Allow-Origin "https://letshare.infinityfreeapp.com"
+    Header always set Access-Control-Allow-Origin "https://letshare-app.fr"
     Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, PATCH, OPTIONS"
     Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
     Header always set Access-Control-Allow-Credentials "true"
     Header always set Access-Control-Max-Age "86400"
+    
+    # Security headers
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always unset X-Powered-By
 </IfModule>
 
 # Handle CORS preflight requests (OPTIONS)

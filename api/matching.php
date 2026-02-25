@@ -4,6 +4,11 @@ require_once 'config.php';
 $method = $_SERVER['REQUEST_METHOD'];
 $user = requireAuth();
 
+// Require CSRF token for state-changing requests
+if ($method !== 'GET') {
+    requireCSRFToken();
+}
+
 try {
     $pdo = getDBConnection();
     

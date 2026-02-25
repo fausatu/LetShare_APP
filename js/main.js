@@ -97,7 +97,17 @@ function createCard(item) {
         '<div class="card-overlay">' +
                 '<button class="btn-details">' + t('viewDetails') + '</button>' +
         '</div>';
-    
+
+    // Traduction automatique de la description si besoin (pas l'auteur)
+    var currentUser = getCurrentUserSync ? getCurrentUserSync() : null;
+    var isAuthor = currentUser && currentUser.id && item.user_id && currentUser.id === item.user_id;
+    var userLang = (window.getCurrentLanguage ? window.getCurrentLanguage() : 'en') || 'en';
+    if (!isAuthor && item.description) {
+        autoTranslateText(item.description, userLang).then(function(translated) {
+            var descElem = card.querySelector('.card-desc');
+            if (descElem) descElem.textContent = translated;
+        });
+    }
     grid.appendChild(card);
 }
 
@@ -288,11 +298,10 @@ async function updateProfileAvatar() {
     // Force refresh from API to get latest data
     try {
         const response = await authAPI.getCurrentUser();
-        if (response.success && response.data && response.data.user) {
+        if (response && response.success && response.data && response.data.user) {
             var user = response.data.user;
             // Update localStorage with fresh data
             localStorage.setItem('currentUser', JSON.stringify(user));
-            
             var profileLink = document.getElementById('profileLink');
             if (profileLink) {
                 if (user.avatar) {
@@ -304,7 +313,6 @@ async function updateProfileAvatar() {
             }
         }
     } catch (error) {
-        console.error('Error updating profile avatar:', error);
         // Fallback to cached data
         var user = getCurrentUserSync();
         var profileLink = document.getElementById('profileLink');
@@ -320,7 +328,6 @@ async function updateProfileAvatar() {
 
 // Listen for profile updates from settings page
 window.addEventListener('userProfileUpdated', async function(event) {
-    console.log('Profile updated event received:', event.detail);
     if (event.detail) {
         // Update localStorage with new data
         localStorage.setItem('currentUser', JSON.stringify(event.detail));
@@ -336,7 +343,6 @@ window.addEventListener('focus', async function() {
     // Check if profile was updated while away
     var profileJustUpdated = sessionStorage.getItem('userProfileJustUpdated');
     if (profileJustUpdated === 'true') {
-        console.log('Profile was updated, refreshing...');
         await getCurrentUser(true);
         await updateProfileAvatar();
         sessionStorage.removeItem('userProfileJustUpdated');
@@ -395,11 +401,8 @@ async function updateNotificationBadge() {
             response = await notificationsAPI.getAll(1, true);
         }
         
-        console.log('Notification badge response:', response);
-        
         if (response.success && response.data) {
             var unreadCount = response.data.unread_count || response.data.count || 0;
-            console.log('Unread count:', unreadCount);
             
             if (unreadCount > 0) {
                 badge.textContent = unreadCount > 99 ? '99+' : unreadCount.toString();
@@ -408,7 +411,6 @@ async function updateNotificationBadge() {
                 badge.style.display = 'none';
             }
         } else {
-            console.log('No unread notifications or invalid response');
             badge.style.display = 'none';
         }
     } catch (error) {
@@ -426,12 +428,8 @@ async function loadNotifications() {
         
         const response = await notificationsAPI.getAll(50);
         
-        console.log('Notifications API response:', response);
-        
         if (response.success && response.data) {
             var notifications = response.data.notifications || [];
-            console.log('Notifications array:', notifications);
-            console.log('Number of notifications:', notifications.length);
             
             container.innerHTML = '';
             
@@ -440,9 +438,8 @@ async function loadNotifications() {
                 return;
             }
             
-            notifications.forEach(function(notification) {
-                console.log('Processing notification:', notification);
-                
+            // Use for...of loop to support async/await
+            for (const notification of notifications) {
                 var item = document.createElement('div');
                 // Check read_status - it might be 0/1 or false/true
                 var isRead = notification.read_status === 1 || notification.read_status === true || notification.read_status === '1';
@@ -460,16 +457,45 @@ async function loadNotifications() {
                 // Translate notification title
                 var translatedTitle = translateNotificationTitle(notification.title || 'Notification');
                 
+                // Translate notification message - hybrid approach
+                var translatedMessage = '';
+                
+                // Try pattern matching only for standard notification types (faster)
+                if (notification.type === 'request' || notification.type === 'acceptance' || notification.type === 'rejection') {
+                    translatedMessage = translateNotificationMessage(notification.message || '') || '';
+                }
+                
+                // For request/acceptance/rejection types, ALWAYS use API to ensure item titles are translated
+                if ((notification.type === 'request' || notification.type === 'acceptance' || notification.type === 'rejection') && notification.message) {
+                    var userLang = getCurrentLanguage();
+                    try {
+                        translatedMessage = await autoTranslateText(notification.message, userLang);
+                    } catch (e) {
+                        console.warn('Error translating notification message:', e);
+                        translatedMessage = notification.message;
+                    }
+                }
+                // For other types, only try API if pattern matching found nothing
+                else if (!translatedMessage && notification.message) {
+                    var userLang = getCurrentLanguage();
+                    try {
+                        translatedMessage = await autoTranslateText(notification.message, userLang);
+                    } catch (e) {
+                        console.warn('Error translating notification message:', e);
+                        translatedMessage = notification.message;
+                    }
+                }
+                
                 item.innerHTML = 
                     '<div class="notification-icon" style="background: ' + iconColor + ';">' + icon + '</div>' +
                     '<div class="notification-content">' +
                         '<div class="notification-title">' + translatedTitle + '</div>' +
-                        (notification.message ? '<div class="notification-message">' + notification.message + '</div>' : '') +
+                        (translatedMessage ? '<div class="notification-message">' + translatedMessage + '</div>' : '') +
                         '<div class="notification-time">' + time + '</div>' +
                     '</div>';
                 
                 container.appendChild(item);
-            });
+            }
         } else {
             console.error('Invalid response format:', response);
             container.innerHTML = '<div class="notification-empty">' + t('errorLoadingNotifications') + '</div>';
@@ -513,9 +539,6 @@ function getNotificationIconColor(type) {
 }
 
 function handleNotificationClick(notification) {
-    console.log('Notification clicked:', notification);
-    
-    // Mark as read
     var isRead = notification.read_status === 1 || notification.read_status === true || notification.read_status === '1';
     if (!isRead) {
         notificationsAPI.markAsRead([notification.id], false).then(function() {
@@ -603,19 +626,14 @@ function notifyInterestedUsers(itemId) {
 // Update time displays periodically
 function updateItemTimes() {
     var timeElements = document.querySelectorAll('.card-time[data-created-at], #modalTime[data-created-at]');
-    console.log('updateItemTimes: Found', timeElements.length, 'time elements');
     timeElements.forEach(function(el) {
         var createdAt = el.getAttribute('data-created-at');
         if (createdAt) {
             var newTime = formatTimeAgo(createdAt);
             var currentTime = el.textContent.trim();
-            // Only update if the time has actually changed
             if (currentTime !== newTime) {
-                console.log('Updating time:', currentTime, '->', newTime, 'for date:', createdAt);
                 el.textContent = newTime;
             }
-        } else {
-            console.log('No data-created-at attribute found on element:', el);
         }
     });
 }
@@ -623,20 +641,15 @@ function updateItemTimes() {
 // Start periodic time updates (more frequent for recent items)
 var timeUpdateInterval = null;
 function startTimeUpdates() {
-    console.log('startTimeUpdates called');
-    updateItemTimes(); // Update immediately
+    updateItemTimes();
     
-    // Clear existing interval if any
     if (timeUpdateInterval) {
         clearInterval(timeUpdateInterval);
     }
     
-    // Update every 5 seconds for very responsive time display (especially for "just now" -> seconds)
     timeUpdateInterval = setInterval(function() {
-        console.log('Time update interval triggered');
         updateItemTimes();
-    }, 5000); // Update every 5 seconds
-    console.log('Time update interval started, will update every 5 seconds');
+    }, 5000);
 }
 
 // NOTE: All messages functions (showMessagesList, showConversation, loadMessagesList, etc.) are now in js/messages.js
@@ -667,16 +680,13 @@ window.addEventListener('storage', function(e) {
 async function checkTermsAcceptance() {
     try {
         const userResponse = await authAPI.getCurrentUser();
-        console.log('User response for terms check:', userResponse);
         if (userResponse.success && userResponse.data) {
             const user = userResponse.data.user;
             const termsRequired = userResponse.data.terms_required;
             
             // Check if terms were never accepted
             if (termsRequired) {
-                console.log('Terms never accepted - showing modal');
-                showTermsModal(true); // true = first time
-                return;
+                showTermsModal(true);
             }
             
             // Check if user accepted an older version
@@ -684,11 +694,8 @@ async function checkTermsAcceptance() {
                 const userVersion = user.terms_version;
                 const currentVersion = TERMS_CONFIG.CURRENT_VERSION;
                 
-                console.log('User terms version:', userVersion, 'Current version:', currentVersion);
-                
                 if (userVersion !== currentVersion) {
-                    console.log('Terms version outdated - showing update modal');
-                    showTermsModal(false); // false = update
+                    showTermsModal(false);
                 }
             }
         }
@@ -707,23 +714,11 @@ function showTermsModal(isFirstTime = true) {
     
     // Update text based on whether it's first time or update
     if (isFirstTime) {
-        // First time: stronger language
-        if (getCurrentLanguage() === 'fr') {
-            modalTitle.textContent = '📋 Acceptation requise';
-            modalText.textContent = 'Pour utiliser Letshare, vous devez lire et accepter nos Conditions Générales d\'Utilisation et notre Politique de confidentialité.';
-        } else {
-            modalTitle.textContent = '📋 Acceptance Required';
-            modalText.textContent = 'To use Letshare, you must read and accept our Terms of Service and Privacy Policy.';
-        }
+        modalTitle.textContent = t('termsModalTitleFirst');
+        modalText.textContent = t('termsModalTextFirst');
     } else {
-        // Update: softer language
-        if (getCurrentLanguage() === 'fr') {
-            modalTitle.textContent = '📋 Conditions mises à jour';
-            modalText.textContent = 'Nos CGU et Politique de confidentialité ont été mises à jour. Veuillez les lire et les accepter pour continuer.';
-        } else {
-            modalTitle.textContent = '📋 Terms Updated';
-            modalText.textContent = 'Our Terms of Service and Privacy Policy have been updated. Please read and accept them to continue.';
-        }
+        modalTitle.textContent = t('termsModalTitleUpdate');
+        modalText.textContent = t('termsModalTextUpdate');
     }
     
     modal.style.display = 'flex';
@@ -744,32 +739,43 @@ function showTermsModal(isFirstTime = true) {
     // Handle accept
     acceptBtn.onclick = async function() {
         if (!checkbox.checked) return;
-        
+
         acceptBtn.disabled = true;
         acceptBtn.textContent = t('saving') || 'Enregistrement...';
-        
+
         try {
+            // Récupérer le token CSRF via l'API utilitaire
+            let csrfToken = null;
+            if (window.getCSRFToken) {
+                csrfToken = await window.getCSRFToken();
+            } else if (window.api && window.api.getCSRFToken) {
+                csrfToken = await window.api.getCSRFToken();
+            } else if (window.csrfToken) {
+                csrfToken = window.csrfToken;
+            }
+
             const response = await fetch('api/accept-terms.php', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {})
                 },
                 body: JSON.stringify({
                     version: TERMS_CONFIG.CURRENT_VERSION
                 }),
                 credentials: 'include'
             });
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 modal.style.display = 'none';
-                
+
                 // Update user data in localStorage
                 const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
                 currentUser.terms_version = TERMS_CONFIG.CURRENT_VERSION;
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                
+
                 if (isFirstTime) {
                     showToast(t('termsAcceptedSuccess') || '✓ Conditions acceptées avec succès');
                 } else {
@@ -810,4 +816,52 @@ function openPrivacyInLanguage() {
     const url = lang === 'en' ? 'privacy-en.html' : 'privacy.html';
     window.open(url, '_blank');
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof initCustomSelects === 'undefined') {
+        // Copie locale si non déjà défini
+        function initCustomSelects() {
+            const customSelects = document.querySelectorAll('.custom-select');
+            customSelects.forEach(select => {
+                const trigger = select.querySelector('.select-trigger');
+                const options = select.querySelector('.select-options');
+                const optionItems = select.querySelectorAll('.select-option');
+                const hiddenInput = select.nextElementSibling;
+                const selectText = select.querySelector('.select-text');
+                trigger.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    document.querySelectorAll('.custom-select').forEach(otherSelect => {
+                        if (otherSelect !== select) {
+                            otherSelect.querySelector('.select-trigger').classList.remove('active');
+                            otherSelect.querySelector('.select-options').classList.remove('open');
+                        }
+                    });
+                    trigger.classList.toggle('active');
+                    options.classList.toggle('open');
+                });
+                optionItems.forEach(option => {
+                    option.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        optionItems.forEach(opt => opt.classList.remove('selected'));
+                        this.classList.add('selected');
+                        const value = this.getAttribute('data-value');
+                        const text = this.textContent;
+                        selectText.textContent = text;
+                        hiddenInput.value = value;
+                        select.setAttribute('data-value', value);
+                        trigger.classList.remove('active');
+                        options.classList.remove('open');
+                    });
+                });
+            });
+            document.addEventListener('click', function() {
+                document.querySelectorAll('.custom-select').forEach(select => {
+                    select.querySelector('.select-trigger').classList.remove('active');
+                    select.querySelector('.select-options').classList.remove('open');
+                });
+            });
+        }
+    }
+    initCustomSelects();
+});
 

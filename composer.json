@@ -1,6 +1,7 @@
 {
     "require": {
         "minishlink/web-push": "^7.0",
-        "vlucas/phpdotenv": "5.5"
+        "vlucas/phpdotenv": "5.5",
+        "pusher/pusher-php-server": "^7.2"
     }
 }

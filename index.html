@@ -2,9 +2,30 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LetShare</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="LetShare - Plateforme d'échange entre étudiants. Donnez, échangez et partagez vos objets gratuitement avec d'autres étudiants de votre université.">
+    <meta name="keywords" content="échange étudiant, partage entre étudiants, don objets, troc université, économie collaborative étudiante">
+    <meta name="author" content="LetShare">
+    <title>LetShare - Give, Swap, Grow</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="css/main.css">
+  
+  <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://letshare-app.fr/">
+    <meta property="og:title" content="LetShare - Partagez entre étudiants">
+    <meta property="og:description" content="Donnez, échangez et partagez vos objets avec d'autres étudiants. Rejoignez la communauté LetShare !">
+    <meta property="og:image" content="https://letshare-app.fr/og-image.jpg">
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://letshare-app.fr/">
+    <meta name="twitter:title" content="LetShare - Partagez entre étudiants">
+    <meta name="twitter:description" content="Donnez, échangez et partagez vos objets avec d'autres étudiants.">
+    <meta name="twitter:image" content="https://letshare-app.fr/og-image.jpg">
+    
+   
 </head>
 <body>
     <div class="bg-blob blob-1"></div>
@@ -58,7 +79,7 @@
         </header>
 
         <div class="hero">
-            <h2 data-i18n="heroTitle">Looking for something ?<br>Get it from your mates</h2>
+            <h2 data-i18n="heroTitle">Give, exchange what you don't need,<br>find what you do!</h2>
            <!-- /* <p>Trouvez le matériel dont vous avez besoin dans votre communauté étudiante</p>*/ -->
             
             <div class="search-container">
@@ -133,7 +154,7 @@
     </div>
 
     <button class="btn-add" id="btnAddItem" onclick="openAddModal()" style="display: none;">+</button>
-    <button class="btn-add btn-join-community" id="btnJoinCommunity" onclick="window.location.href='register.html'" data-i18n="joinCommunity">Rejoindre la communauté</button>
+    <button class="btn-add btn-join-community" id="btnJoinCommunity" onclick="window.location.href='register.html'" data-i18n="declutterHelp">Declutter & Help Others</button>
 
     <!-- Add Item Modal -->
     <div class="add-modal" id="addModal">
@@ -281,24 +302,24 @@
     <!-- Notifications Modal -->
     <div class="notifications-modal" id="notificationsModal" onclick="if(event.target.id === 'notificationsModal') closeNotificationsModal()">
         <div class="notifications-modal-content">
-            <button class="modal-close" onclick="closeNotificationsModal()" style="position: absolute; top: 1.5rem; right: 1.2rem;">✕</button>
+            <button class="modal-close" onclick="closeNotificationsModal()" style="position: absolute; top: 2rem; right: 0.1rem; background: none; border: none; color: #6b7280; cursor: pointer; font-size: 1.5rem; width: 2.5rem; height: 2.5rem; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.2s; z-index: 1;" onmouseover="this.style.background='rgba(0,0,0,0.1)'; this.style.color='#374151'" onmouseout="this.style.background='none'; this.style.color='#6b7280'" title="Close">✕</button>
             <div class="notifications-header">
                 <h2 style="margin: 0; font-size: 1.5rem; font-weight: 600; color: #1f2937;" data-i18n="notifications">Notifications</h2>
-                <button class="btn-mark-all-read" onclick="markAllNotificationsAsRead()" style="padding: 0.5rem 1rem; background: #10b981; border: 1px solid #e5e7eb; border-radius: 0.5rem; color: white; font-size: 0.875rem; cursor: pointer; transition: all 0.3s; margin-right: 50px;" data-i18n="markAllAsRead">Mark all as read</button>
+                <button class="btn-mark-all-read" onclick="markAllNotificationsAsRead()" style="padding: 0.75rem 1.5rem; margin-right: 20px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; border-radius: 0.75rem; color: white; font-size: 0.875rem; cursor: pointer; transition: all 0.3s; font-weight: 500; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 20px rgba(16, 185, 129, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(16, 185, 129, 0.3)'" data-i18n="markAllAsRead">Mark all as read</button>
             </div>
-            <div id="notificationsList" style="flex: 1; overflow-y: auto; min-height: 0; scrollbar-width: none; -ms-overflow-style: none; max-height: 70vh;">
+            <div id="notificationsList" style="flex: 1; overflow-y: auto; min-height: 0; scrollbar-width: thin; -ms-overflow-style: none; max-height: 65vh; padding-right: 0.5rem;">
                 <!-- Notifications will be loaded dynamically -->
             </div>
         </div>
     </div>
 
     <!-- Messages Modal -->
-    <div class="messages-modal" id="messagesModal">
-        <div class="messages-modal-content" id="messagesModalContent">
-            <button class="modal-close" onclick="closeMessagesModal()" style="position: absolute; top: 1.5rem; right: 1.5rem;">✕</button>
-            <div id="messagesListView">
-                <h2 style="margin: 0 0 1rem 0; font-size: 1.5rem; font-weight: 600;">Messages</h2>
-                <div id="messagesListMain" style="flex: 1; overflow-y: auto; min-height: 0; scrollbar-width: none; -ms-overflow-style: none;">
+    <div class="messages-modal" id="messagesModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px);">
+        <div class="messages-modal-content" id="messagesModalContent" style="background: white; border-radius: 1.25rem; padding: 1.5rem; max-width: 500px; width: 85%; max-height: 80vh; box-shadow: 0 25px 80px rgba(0,0,0,0.4); display: flex; flex-direction: column; overflow: hidden; position: relative; min-width: 320px;">
+            <button class="modal-close" onclick="closeMessagesModal()" style="position: absolute; top: 1.5rem; right: 1.5rem; background: none; border: none; color: #6b7280; cursor: pointer; font-size: 1.5rem; width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.2s; z-index: 1;" onmouseover="this.style.background='rgba(0,0,0,0.1)'" onmouseout="this.style.background='none'" title="Close">✕</button>
+            <div id="messagesListView" style="display: flex; flex-direction: column; height: 100%; min-height: 0;">
+                <h2 style="margin: 0 0 1.5rem 0; font-size: 1.25rem; font-weight: 600; color: #1f2937; padding-right: 2rem;">Messages</h2>
+                <div id="messagesListMain" style="flex: 1; overflow-y: auto; min-height: 200px; max-height: 400px; scrollbar-width: thin; border: 1px solid rgba(0,0,0,0.1); border-radius: 0.75rem; background: rgba(0,0,0,0.02);">
                     <!-- Messages will be loaded dynamically -->
                 </div>
             </div>
@@ -363,6 +384,25 @@
                     <button type="submit" class="btn-submit">Submit Feedback</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="confirmation-modal" id="confirmationModal" style="display: none;">
+        <div class="confirmation-modal-content">
+            <div class="confirmation-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                </svg>
+            </div>
+            <h2 id="confirmationTitle">Confirm Action</h2>
+            <p id="confirmationMessage">Are you sure you want to proceed?</p>
+            <div class="confirmation-buttons">
+                <button class="btn-cancel" onclick="closeConfirmationModal()">Cancel</button>
+                <button class="btn-confirm-action" id="confirmActionBtn">Confirm</button>
+            </div>
         </div>
     </div>
 
@@ -468,6 +508,10 @@
     <script src="js/filters.js"></script>
     <script src="js/items.js"></script>
     <script src="js/modals.js"></script>
+  <!-- Pusher SDK for real-time chat -->
+    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+    <script src="js/pusher-chat.js"></script>
+    <script src="js/conversation-modal.js"></script>
     <script src="js/messages.js"></script>
     <script src="js/presence.js"></script>
     <script src="js/feedback.js"></script>

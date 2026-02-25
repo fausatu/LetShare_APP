@@ -1,8 +1,14 @@
 <?php
 require_once 'config.php';
+require_once 'pusher_config.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $user = requireAuth();
+
+// Require CSRF token for state-changing requests
+if ($method !== 'GET') {
+    requireCSRFToken();
+}
 
 try {
     $pdo = getDBConnection();
@@ -135,7 +141,7 @@ try {
             if ($otherUserLastSeen) {
                 $lastSeenTimestamp = strtotime($otherUserLastSeen);
                 $now = time();
-                $isOnline = ($now - $lastSeenTimestamp) <= 300; // 5 minutes = 300 seconds
+                $isOnline = ($now - $lastSeenTimestamp) <= ONLINE_THRESHOLD_SECONDS;
             }
             
             sendResponse(true, 'Conversation retrieved', [
@@ -218,12 +224,24 @@ try {
             
             $toUserId = $conv['owner_id'] == $user['id'] ? $conv['requester_id'] : $conv['owner_id'];
             
-            // Create message
+            // Create message - read_status = 0 means UNREAD for the recipient
             $stmt = $pdo->prepare("
                 INSERT INTO messages (conversation_id, from_user_id, to_user_id, text, read_status) 
-                VALUES (?, ?, ?, ?, 1)
+                VALUES (?, ?, ?, ?, 0)
             ");
             $stmt->execute([$dbConversationId, $user['id'], $toUserId, $messageText]);
+            $messageId = $pdo->lastInsertId();
+            
+            // Trigger Pusher event for real-time message
+            triggerNewMessage($dbConversationId, [
+                'id' => (int)$messageId,
+                'conversationId' => (int)$dbConversationId,
+                'from_user_id' => (int)$user['id'],
+                'to_user_id' => (int)$toUserId,
+                'text' => $messageText,
+                'timestamp' => date('Y-m-d H:i:s'),
+                'read' => false
+            ]);
             
             // Update conversation
             $stmt = $pdo->prepare("UPDATE conversations SET updated_at = NOW() WHERE id = ?");
@@ -242,8 +260,14 @@ try {
             $stmt->execute([$user['id']]);
             
             // Create notification for recipient
-            require_once 'notification_helper.php';
-            createNotification($pdo, $toUserId, 'message', 'New message', $messageText, null, $dbConversationId, $user['id']);
+            try {
+                require_once 'notification_helper.php';
+                $recipientLang = getUserLanguage($pdo, $toUserId);
+                $msgNotifTitle = getNotifText('new_message', $recipientLang);
+                createNotification($pdo, $toUserId, 'message', $msgNotifTitle, $messageText, null, $dbConversationId, $user['id']);
+            } catch (Exception $e) {
+                error_log('Error creating message notification: ' . $e->getMessage());
+            }
             
             sendResponse(true, 'Message sent successfully', [
                 'message_id' => $pdo->lastInsertId()
@@ -251,259 +275,284 @@ try {
             break;
             
         case 'PUT':
-            // Update conversation status (accept, reject, complete)
-            $data = getRequestData();
-            $conversationIdParam = $data['conversation_id'] ?? null;
-            $status = $data['status'] ?? '';
-            
-            if (!$conversationIdParam || !in_array($status, ['accepted', 'rejected', 'completed'])) {
-                sendResponse(false, 'Valid conversation ID and status are required', null, 400);
-            }
-            
-            // Handle conversation ID format
-            $dbConversationId = null;
-            if (is_numeric($conversationIdParam)) {
-                $dbConversationId = (int)$conversationIdParam;
-            } else if (strpos($conversationIdParam, 'conv_') === 0) {
-                $parts = explode('_', $conversationIdParam);
-                if (count($parts) === 3) {
-                    $itemId = (int)$parts[1];
-                    $otherUserId = (int)$parts[2];
-                    $stmt = $pdo->prepare("
-                        SELECT c.id FROM conversations c
-                        WHERE c.item_id = ? AND (c.owner_id = ? OR c.requester_id = ?) 
-                        AND (c.owner_id = ? OR c.requester_id = ?)
-                        LIMIT 1
-                    ");
-                    $stmt->execute([$itemId, $user['id'], $user['id'], $otherUserId, $otherUserId]);
-                    $conv = $stmt->fetch();
-                    if ($conv) {
-                        $dbConversationId = $conv['id'];
-                    }
-                }
-            }
-            
-            if (!$dbConversationId) {
-                sendResponse(false, 'Conversation not found', null, 404);
-            }
-            
-            // Verify user is owner and get conversation details
-            $stmt = $pdo->prepare("
-                SELECT c.owner_id, c.requester_id, c.item_id, i.title as item_title, i.type as item_type
-                FROM conversations c
-                INNER JOIN items i ON c.item_id = i.id
-                WHERE c.id = ?
-            ");
-            $stmt->execute([$dbConversationId]);
-            $conv = $stmt->fetch();
-            
-            if (!$conv) {
-                sendResponse(false, 'Conversation not found', null, 404);
-            }
-            
-            if ($conv['owner_id'] != $user['id'] && $status != 'completed') {
-                sendResponse(false, 'Only the owner can accept or reject requests', null, 403);
-            }
-            
-            // Handle completion logic based on item type
-            if ($status === 'completed') {
-                $itemType = $conv['item_type'] ?? 'exchange';
+            try {
+                // Update conversation status (accept, reject, complete)
+                $data = getRequestData();
+                $conversationIdParam = $data['conversation_id'] ?? null;
+                $status = $data['status'] ?? '';
                 
-                if ($itemType === 'donation') {
-                    // Donation: Only requester can confirm completion (existing logic)
-                    if ($conv['requester_id'] != $user['id']) {
-                        sendResponse(false, 'Only the requester can confirm completion for donations', null, 403);
-                    }
-                    
-                    // Direct completion for donations
-                    $stmt = $pdo->prepare("UPDATE conversations SET status = 'completed', updated_at = NOW() WHERE id = ?");
-                    $stmt->execute([$dbConversationId]);
-                    
-                } else {
-                    // Exchange: Both parties must confirm (new logic)
-                    $isOwner = $conv['owner_id'] == $user['id'];
-                    $isRequester = $conv['requester_id'] == $user['id'];
-                    
-                    if (!$isOwner && !$isRequester) {
-                        sendResponse(false, 'You are not part of this conversation', null, 403);
-                    }
-                    
-                    // Get current confirmation status
-                    $stmt = $pdo->prepare("
-                        SELECT status, owner_confirmed_at, requester_confirmed_at 
-                        FROM conversations WHERE id = ?
-                    ");
-                    $stmt->execute([$dbConversationId]);
-                    $currentConv = $stmt->fetch();
-                    
-                    if ($isOwner) {
-                        // Owner confirming
-                        if ($currentConv['requester_confirmed_at']) {
-                            // Requester already confirmed, now both confirmed → completed
-                            $stmt = $pdo->prepare("
-                                UPDATE conversations 
-                                SET status = 'completed', owner_confirmed_at = NOW(), updated_at = NOW() 
-                                WHERE id = ?
-                            ");
-                            $stmt->execute([$dbConversationId]);
-                            $finalStatus = 'completed';
-                        } else {
-                            // Owner is first to confirm → partial_confirmed
-                            $stmt = $pdo->prepare("
-                                UPDATE conversations 
-                                SET status = 'partial_confirmed', owner_confirmed_at = NOW(), updated_at = NOW() 
-                                WHERE id = ?
-                            ");
-                            $stmt->execute([$dbConversationId]);
-                            $finalStatus = 'partial_confirmed';
-                            
-                            // Send reminder notification to requester
-                            require_once 'notification_helper.php';
-                            createNotification(
-                                $pdo, 
-                                $conv['requester_id'], 
-                                'system', 
-                                'Exchange confirmation needed',
-                                'Your exchange partner has confirmed completion. Please confirm on your side too.',
-                                $conv['item_id'], 
-                                $dbConversationId, 
-                                $user['id']
-                            );
-                        }
-                    } else {
-                        // Requester confirming  
-                        if ($currentConv['owner_confirmed_at']) {
-                            // Owner already confirmed, now both confirmed → completed
-                            $stmt = $pdo->prepare("
-                                UPDATE conversations 
-                                SET status = 'completed', requester_confirmed_at = NOW(), updated_at = NOW() 
-                                WHERE id = ?
-                            ");
-                            $stmt->execute([$dbConversationId]);
-                            $finalStatus = 'completed';
-                        } else {
-                            // Requester is first to confirm → partial_confirmed
-                            $stmt = $pdo->prepare("
-                                UPDATE conversations 
-                                SET status = 'partial_confirmed', requester_confirmed_at = NOW(), updated_at = NOW() 
-                                WHERE id = ?
-                            ");
-                            $stmt->execute([$dbConversationId]);
-                            $finalStatus = 'partial_confirmed';
-                            
-                            // Send reminder notification to owner
-                            require_once 'notification_helper.php';
-                            createNotification(
-                                $pdo, 
-                                $conv['owner_id'], 
-                                'system', 
-                                'Exchange confirmation needed',
-                                'Your exchange partner has confirmed completion. Please confirm on your side too.',
-                                $conv['item_id'], 
-                                $dbConversationId, 
-                                $user['id']
-                            );
+                if (!$conversationIdParam || !in_array($status, ['accepted', 'rejected', 'completed'])) {
+                    sendResponse(false, 'Valid conversation ID and status are required', null, 400);
+                }
+                
+                // Handle conversation ID format
+                $dbConversationId = null;
+                if (is_numeric($conversationIdParam)) {
+                    $dbConversationId = (int)$conversationIdParam;
+                } else if (strpos($conversationIdParam, 'conv_') === 0) {
+                    $parts = explode('_', $conversationIdParam);
+                    if (count($parts) === 3) {
+                        $itemId = (int)$parts[1];
+                        $otherUserId = (int)$parts[2];
+                        $stmt = $pdo->prepare("
+                            SELECT c.id FROM conversations c
+                            WHERE c.item_id = ? AND (c.owner_id = ? OR c.requester_id = ?) 
+                            AND (c.owner_id = ? OR c.requester_id = ?)
+                            LIMIT 1
+                        ");
+                        $stmt->execute([$itemId, $user['id'], $user['id'], $otherUserId, $otherUserId]);
+                        $conv = $stmt->fetch();
+                        if ($conv) {
+                            $dbConversationId = $conv['id'];
                         }
                     }
-                    
-                    // If fully completed, update item status
-                    if (isset($finalStatus) && $finalStatus === 'completed') {
-                        $stmt = $pdo->prepare("UPDATE items SET status = 'completed' WHERE id = ?");
-                        $stmt->execute([$conv['item_id']]);
-                    }
                 }
-            } else {
-                // For accept/reject, use existing logic
-                $stmt = $pdo->prepare("UPDATE conversations SET status = ?, updated_at = NOW() WHERE id = ?");
-                $stmt->execute([$status, $dbConversationId]);
-            }
-            
-            // If accepted, update item status and auto-reject other pending conversations
-            if ($status === 'accepted') {
-                $stmt = $pdo->prepare("UPDATE items SET status = 'accepted' WHERE id = ?");
-                $stmt->execute([$conv['item_id']]);
                 
-                // Auto-reject all other pending conversations for this item
+                if (!$dbConversationId) {
+                    sendResponse(false, 'Conversation not found', null, 404);
+                }
+                
+                // Verify user is owner and get conversation details
                 $stmt = $pdo->prepare("
-                    SELECT id, requester_id FROM conversations 
-                    WHERE item_id = ? AND status = 'pending' AND id != ?
+                    SELECT c.owner_id, c.requester_id, c.item_id, i.title as item_title, i.type as item_type
+                    FROM conversations c
+                    INNER JOIN items i ON c.item_id = i.id
+                    WHERE c.id = ?
                 ");
-                $stmt->execute([$conv['item_id'], $dbConversationId]);
-                $otherConversations = $stmt->fetchAll();
+                $stmt->execute([$dbConversationId]);
+                $conv = $stmt->fetch();
                 
-                if (!empty($otherConversations)) {
-                    // Update status to rejected for all other pending conversations
-                    $otherConvIds = array_column($otherConversations, 'id');
-                    $placeholders = implode(',', array_fill(0, count($otherConvIds), '?'));
-                    $stmt = $pdo->prepare("UPDATE conversations SET status = 'rejected', updated_at = NOW() WHERE id IN ($placeholders)");
-                    $stmt->execute($otherConvIds);
+                if (!$conv) {
+                    sendResponse(false, 'Conversation not found', null, 404);
+                }
+                
+                if ($conv['owner_id'] != $user['id'] && $status != 'completed') {
+                    sendResponse(false, 'Only the owner can accept or reject requests', null, 403);
+                }
+                
+                // Handle completion logic based on item type
+                if ($status === 'completed') {
+                    $itemType = $conv['item_type'] ?? 'exchange';
                     
-                    // Send rejection notifications and optionally auto-delete based on user preferences
+                    if ($itemType === 'donation') {
+                        // Donation: Only requester can confirm completion (existing logic)
+                        if ($conv['requester_id'] != $user['id']) {
+                            sendResponse(false, 'Only the requester can confirm completion for donations', null, 403);
+                        }
+                        
+                        // Direct completion for donations - set requester_confirmed_at timestamp
+                        $stmt = $pdo->prepare("UPDATE conversations SET status = 'completed', requester_confirmed_at = NOW(), updated_at = NOW() WHERE id = ?");
+                        $stmt->execute([$dbConversationId]);
+                        
+                    } else {
+                        // Exchange: Both parties must confirm (new logic)
+                        $isOwner = $conv['owner_id'] == $user['id'];
+                        $isRequester = $conv['requester_id'] == $user['id'];
+                        
+                        if (!$isOwner && !$isRequester) {
+                            sendResponse(false, 'You are not part of this conversation', null, 403);
+                        }
+                        
+                        // Get current confirmation status
+                        $stmt = $pdo->prepare("
+                            SELECT status, owner_confirmed_at, requester_confirmed_at 
+                            FROM conversations WHERE id = ?
+                        ");
+                        $stmt->execute([$dbConversationId]);
+                        $currentConv = $stmt->fetch();
+                        
+                        if ($isOwner) {
+                            // Owner confirming
+                            if ($currentConv['requester_confirmed_at']) {
+                                // Requester already confirmed, now both confirmed → completed
+                                $stmt = $pdo->prepare("
+                                    UPDATE conversations 
+                                    SET status = 'completed', owner_confirmed_at = NOW(), updated_at = NOW() 
+                                    WHERE id = ?
+                                ");
+                                $stmt->execute([$dbConversationId]);
+                                $finalStatus = 'completed';
+                            } else {
+                                // Owner is first to confirm → partial_confirmed
+                                $stmt = $pdo->prepare("
+                                    UPDATE conversations 
+                                    SET status = 'partial_confirmed', owner_confirmed_at = NOW(), updated_at = NOW() 
+                                    WHERE id = ?
+                                ");
+                                $stmt->execute([$dbConversationId]);
+                                $finalStatus = 'partial_confirmed';
+                                
+                                // Send reminder notification to requester
+                                try {
+                                    require_once 'notification_helper.php';
+                                    $requesterLang = getUserLanguage($pdo, $conv['requester_id']);
+                                    createNotification(
+                                        $pdo, 
+                                        $conv['requester_id'], 
+                                        'system', 
+                                        getNotifText('confirmation_needed', $requesterLang),
+                                        getNotifText('confirmation_needed_msg', $requesterLang),
+                                        $conv['item_id'], 
+                                        $dbConversationId, 
+                                        $user['id']
+                                    );
+                                } catch (Exception $e) {
+                                    error_log('Error creating confirmation reminder notification: ' . $e->getMessage());
+                                }
+                            }
+                        } else {
+                            // Requester confirming  
+                            if ($currentConv['owner_confirmed_at']) {
+                                // Owner already confirmed, now both confirmed → completed
+                                $stmt = $pdo->prepare("
+                                    UPDATE conversations 
+                                    SET status = 'completed', requester_confirmed_at = NOW(), updated_at = NOW() 
+                                    WHERE id = ?
+                                ");
+                                $stmt->execute([$dbConversationId]);
+                                $finalStatus = 'completed';
+                            } else {
+                                // Requester is first to confirm → partial_confirmed
+                                $stmt = $pdo->prepare("
+                                    UPDATE conversations 
+                                    SET status = 'partial_confirmed', requester_confirmed_at = NOW(), updated_at = NOW() 
+                                    WHERE id = ?
+                                ");
+                                $stmt->execute([$dbConversationId]);
+                                $finalStatus = 'partial_confirmed';
+                                
+                                // Send reminder notification to owner
+                                try {
+                                    require_once 'notification_helper.php';
+                                    $ownerLang = getUserLanguage($pdo, $conv['owner_id']);
+                                    createNotification(
+                                        $pdo, 
+                                        $conv['owner_id'], 
+                                        'system', 
+                                        getNotifText('confirmation_needed', $ownerLang),
+                                        getNotifText('confirmation_needed_msg', $ownerLang),
+                                        $conv['item_id'], 
+                                        $dbConversationId, 
+                                        $user['id']
+                                    );
+                                } catch (Exception $e) {
+                                    error_log('Error creating confirmation reminder notification: ' . $e->getMessage());
+                                }
+                            }
+                        }
+                        
+                        // If fully completed, update item status
+                        if (isset($finalStatus) && $finalStatus === 'completed') {
+                            $stmt = $pdo->prepare("UPDATE items SET status = 'completed' WHERE id = ?");
+                            $stmt->execute([$conv['item_id']]);
+                        }
+                    }
+                } else {
+                    // For accept/reject, use existing logic
+                    $stmt = $pdo->prepare("UPDATE conversations SET status = ?, updated_at = NOW() WHERE id = ?");
+                    $result = $stmt->execute([$status, $dbConversationId]);
+                    if (!$result) {
+                        error_log('Failed to update conversation status: ' . print_r($stmt->errorInfo(), true));
+                    }
+                }
+                
+                // If accepted, update item status and auto-reject other pending conversations
+                if ($status === 'accepted') {
+                    $stmt = $pdo->prepare("UPDATE items SET status = 'accepted' WHERE id = ?");
+                    $result = $stmt->execute([$conv['item_id']]);
+                    if (!$result) {
+                        error_log('Failed to update item status: ' . print_r($stmt->errorInfo(), true));
+                    }
+                    
+                    // Auto-reject all other pending conversations for this item
+                    $stmt = $pdo->prepare("
+                        SELECT id, requester_id FROM conversations 
+                        WHERE item_id = ? AND status = 'pending' AND id != ?
+                    ");
+                    $stmt->execute([$conv['item_id'], $dbConversationId]);
+                    $otherConversations = $stmt->fetchAll();
+                    
+                    if (!empty($otherConversations)) {
+                        // Update status to rejected for all other pending conversations
+                        $otherConvIds = array_column($otherConversations, 'id');
+                        $placeholders = implode(',', array_fill(0, count($otherConvIds), '?'));
+                        $stmt = $pdo->prepare("UPDATE conversations SET status = 'rejected', updated_at = NOW() WHERE id IN ($placeholders)");
+                        $stmt->execute($otherConvIds);
+                        
+                        // Send rejection notifications and optionally auto-delete based on user preferences
+                        $itemTitle = $conv['item_title'];
+                        $itemType = $conv['item_type'] ?? 'exchange';
+                        $itemTypeText = ($itemType === 'donation') ? 'donation' : 'exchange';
+                        
+                        foreach ($otherConversations as $otherConv) {
+                            try {
+                                // Get user's conversation preferences and language
+                                $stmt = $pdo->prepare("SELECT auto_delete_rejected_conversations, language FROM users WHERE id = ?");
+                                $stmt->execute([$otherConv['requester_id']]);
+                                $userPrefs = $stmt->fetch();
+                                $autoDeleteRejected = $userPrefs['auto_delete_rejected_conversations'] ?? true;
+                                $userLang = $userPrefs['language'] ?? 'fr';
+                                
+                                // Send notification in user's language
+                                $notifTitle = getNotifText('request_no_longer_available', $userLang);
+                                $notifMessage = getNotifText('request_no_longer_available_msg', $userLang, ['item' => $itemTitle]);
+                                
+                                createNotification(
+                                    $pdo, 
+                                    $otherConv['requester_id'], 
+                                    'rejection', 
+                                    $notifTitle, 
+                                    $notifMessage, 
+                                    $conv['item_id'], 
+                                    $otherConv['id'], 
+                                    $user['id']
+                                );
+                                
+                                // Auto-delete the conversation if user has this preference enabled
+                                if ($autoDeleteRejected) {
+                                    $stmt = $pdo->prepare("UPDATE conversations SET hidden_by_user_id = ?, updated_at = NOW() WHERE id = ?");
+                                    $stmt->execute([$otherConv['requester_id'], $otherConv['id']]);
+                                    error_log('Auto-deleted rejected conversation ' . $otherConv['id'] . ' for user ' . $otherConv['requester_id']);
+                                }
+                            } catch (Exception $e) {
+                                error_log('Error creating auto-rejection notification: ' . $e->getMessage());
+                            }
+                        }
+                    }
+                }
+                
+                // Create notification for requester (acceptance or rejection)
+                try {
+                    require_once 'notification_helper.php';
+                    $requesterId = $conv['requester_id'];
                     $itemTitle = $conv['item_title'];
                     $itemType = $conv['item_type'] ?? 'exchange';
-                    $itemTypeText = ($itemType === 'donation') ? 'donation' : 'exchange';
                     
-                    foreach ($otherConversations as $otherConv) {
-                        try {
-                            // Get user's conversation preferences
-                            $stmt = $pdo->prepare("SELECT auto_delete_rejected_conversations FROM users WHERE id = ?");
-                            $stmt->execute([$otherConv['requester_id']]);
-                            $userPrefs = $stmt->fetch();
-                            $autoDeleteRejected = $userPrefs['auto_delete_rejected_conversations'] ?? true;
-                            
-                            // Send notification
-                            createNotification(
-                                $pdo, 
-                                $otherConv['requester_id'], 
-                                'rejection', 
-                                'Request no longer available', 
-                                'The ' . $itemTypeText . ' "' . $itemTitle . '" is no longer available as another request has been accepted.', 
-                                $conv['item_id'], 
-                                $otherConv['id'], 
-                                $user['id']
-                            );
-                            
-                            // Auto-delete the conversation if user has this preference enabled
-                            if ($autoDeleteRejected) {
-                                $stmt = $pdo->prepare("UPDATE conversations SET hidden_by_user_id = ?, updated_at = NOW() WHERE id = ?");
-                                $stmt->execute([$otherConv['requester_id'], $otherConv['id']]);
-                                error_log('Auto-deleted rejected conversation ' . $otherConv['id'] . ' for user ' . $otherConv['requester_id']);
-                            }
-                        } catch (Exception $e) {
-                            error_log('Error creating auto-rejection notification: ' . $e->getMessage());
-                        }
+                    // Get requester's language for notification
+                    $requesterLang = getUserLanguage($pdo, $requesterId);
+                    
+                    if ($status === 'accepted') {
+                        $notificationTitle = getNotifText('request_accepted', $requesterLang);
+                        $notificationMessage = getNotifText('request_accepted_msg', $requesterLang, ['item' => $itemTitle]);
+                        $notificationType = 'acceptance';
+                    } else if ($status === 'rejected') {
+                        $notificationTitle = getNotifText('request_rejected', $requesterLang);
+                        $notificationMessage = getNotifText('request_rejected_msg', $requesterLang, ['item' => $itemTitle]);
+                        $notificationType = 'rejection';
                     }
-                }
-            }
-            
-            // Create notification for requester (acceptance or rejection)
-            require_once 'notification_helper.php';
-            $requesterId = $conv['requester_id'];
-            $itemTitle = $conv['item_title'];
-            $itemType = $conv['item_type'] ?? 'exchange'; // Get item type from conversation data
-            
-            $itemTypeText = ($itemType === 'donation') ? 'donation' : 'exchange';
-            
-            if ($status === 'accepted') {
-                $notificationTitle = 'Request accepted';
-                $notificationMessage = 'Your request for the ' . $itemTypeText . ' "' . $itemTitle . '" has been accepted!';
-                $notificationType = 'acceptance';
-            } else if ($status === 'rejected') {
-                $notificationTitle = 'Request rejected';
-                $notificationMessage = 'Your request for the ' . $itemTypeText . ' "' . $itemTitle . '" has been rejected.';
-                $notificationType = 'rejection';
-            }
-            
-            if (isset($notificationType)) {
-                try {
-                    createNotification($pdo, $requesterId, $notificationType, $notificationTitle, $notificationMessage, $conv['item_id'], $dbConversationId, $user['id']);
+                    
+                    if (isset($notificationType)) {
+                        createNotification($pdo, $requesterId, $notificationType, $notificationTitle, $notificationMessage, $conv['item_id'], $dbConversationId, $user['id']);
+                    }
                 } catch (Exception $e) {
-                    error_log('Error creating notification: ' . $e->getMessage());
-                    // Don't fail the request if notification creation fails
+                    error_log('Error in final notification creation: ' . $e->getMessage());
                 }
+                
+                sendResponse(true, 'Conversation status updated');
+            } catch (Exception $e) {
+                error_log('Exception in PUT handler: ' . $e->getMessage() . ' at line ' . $e->getLine());
+                sendResponse(false, 'Error updating conversation: ' . $e->getMessage(), null, 500);
             }
-            
-            sendResponse(true, 'Conversation status updated');
             break;
             
         case 'PATCH':
@@ -616,5 +665,14 @@ try {
     
 } catch (PDOException $e) {
     handleDatabaseError($e, 'conversations');
+} catch (Exception $e) {
+    error_log('Exception in conversations API: ' . $e->getMessage());
+    handleError($e, 'conversations');
+} catch (Throwable $e) {
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: application/json');
+    }
+    echo json_encode(['success' => false, 'message' => 'Server error']);
 }
 

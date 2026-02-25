@@ -128,12 +128,16 @@ try {
             
             // Send in-app notification
             require_once __DIR__ . '/notification_helper.php';
+            $userLang = getUserLanguage($pdo, $waitingUserId);
+            $reminderTitle = getNotifText('exchange_reminder', $userLang);
+            $reminderMessage = getNotifText('exchange_reminder_msg', $userLang, ['dayText' => $dayText, 'item' => $conv['item_title']]);
+            
             createNotification(
                 $pdo,
                 $waitingUserId,
                 'system',
-                'Exchange confirmation reminder',
-                "Reminder: Your exchange partner confirmed completion {$dayText}. Please confirm your side of the exchange for \"{$conv['item_title']}\".",
+                $reminderTitle,
+                $reminderMessage,
                 $conv['item_id'],
                 $conv['id'],
                 null
@@ -185,24 +189,32 @@ try {
         require_once __DIR__ . '/notification_helper.php';
         
         // Notify the person who hadn't confirmed yet
+        $waitingUserLang = getUserLanguage($pdo, $waitingUserId);
+        $autoCompleteTitle = getNotifText('exchange_auto_completed', $waitingUserLang);
+        $autoCompleteMessage = getNotifText('exchange_auto_completed_msg', $waitingUserLang, ['item' => $conv['item_title']]);
+        
         createNotification(
             $pdo,
             $waitingUserId,
             'system',
-            'Exchange automatically completed',
-            "Your exchange for \"{$conv['item_title']}\" has been automatically marked as completed. You can still leave a review.",
+            $autoCompleteTitle,
+            $autoCompleteMessage,
             $conv['item_id'],
             $conv['id'],
             null
         );
         
         // Notify the person who had confirmed
+        $confirmedUserLang = getUserLanguage($pdo, $confirmedUserId);
+        $completeTitle = getNotifText('exchange_completed', $confirmedUserLang);
+        $completeMessage = getNotifText('exchange_completed_msg', $confirmedUserLang, ['item' => $conv['item_title']]);
+        
         createNotification(
             $pdo,
             $confirmedUserId,
             'system',
-            'Exchange completed',
-            "Your exchange for \"{$conv['item_title']}\" has been completed. You can now leave a review.",
+            $completeTitle,
+            $completeMessage,
             $conv['item_id'],
             $conv['id'],
             null

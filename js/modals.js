@@ -75,12 +75,7 @@ async function openModal(item) {
     currentItem = item;
     currentImageIndex = 0;
     
-    // Get all images (use images array if available, otherwise fallback to single image)
     modalImages = item.images && item.images.length > 0 ? item.images : (item.image ? [item.image] : []);
-    
-    console.log('openModal - item images:', modalImages);
-    console.log('openModal - item.images:', item.images);
-    console.log('openModal - item.image:', item.image);
     
     // Display images in carousel
     var carouselContainer = document.getElementById('carouselImages');
@@ -105,7 +100,7 @@ async function openModal(item) {
                 var img = document.createElement('img');
                 img.src = imgUrl;
                 img.alt = item.title + ' - Image ' + (index + 1);
-                img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; border-radius: 1.5rem;';
+                img.style.cssText = 'width: 100%; height: 100%; object-fit: contain; border-radius: 1.5rem;';
                 img.onerror = function() {
                     imgDiv.style.display = 'none';
                 };
@@ -225,7 +220,6 @@ async function openModal(item) {
     
     // Check for existing request
     var hasExistingRequest = await checkExistingRequest(item.id);
-    console.log('openModal - hasExistingRequest:', hasExistingRequest, 'for item:', item.id);
     
     if (hasExistingRequest) {
         if (btnContact) {
@@ -300,8 +294,39 @@ async function openModal(item) {
         }
     }
     
+    // Open the modal
     document.getElementById('modal').classList.add('active');
     document.body.classList.add('modal-open');
+    
+    // Translate modal content if needed
+    var userLang = (window.getCurrentLanguage ? window.getCurrentLanguage() : 'en') || 'en';
+    var currentUser = getCurrentUserSync ? getCurrentUserSync() : null;
+    var isAuthor = currentUser && currentUser.id && item.user_id && currentUser.id === item.user_id;
+    
+    // Always translate for non-authors (Google Translate detects source language automatically)
+    if (!isAuthor) {
+        // Translate title
+        if (item.title) {
+            autoTranslateText(item.title, userLang).then(function(translated) {
+                if (translated && translated !== item.title) {
+                    document.getElementById('modalTitle').textContent = translated;
+                }
+            }).catch(function(error) {
+                console.warn('[openModal] Title translation failed:', error);
+            });
+        }
+        
+        // Translate description
+        if (item.description) {
+            autoTranslateText(item.description, userLang).then(function(translated) {
+                if (translated && translated !== item.description) {
+                    document.getElementById('modalDesc').textContent = translated;
+                }
+            }).catch(function(error) {
+                console.warn('[openModal] Description translation failed:', error);
+            });
+        }
+    }
 }
 
 function closeModal() {
@@ -367,7 +392,6 @@ async function openReviewsModal() {
             return;
         }
         
-        console.log('Loading reviews for userId:', itemUserId);
         const response = await reviewsAPI.get(itemUserId);
         
         if (response.success && response.data) {
@@ -485,7 +509,6 @@ function closeRequestModal() {
 async function checkExistingRequest(itemId) {
     try {
         const response = await messagesAPI.getAll();
-        console.log('checkExistingRequest - API response:', response);
         if (response.success && response.data && Array.isArray(response.data)) {
             // Check if any conversation exists for this item (only pending or accepted, not rejected)
             var existingConv = response.data.find(function(conv) {
@@ -494,15 +517,11 @@ async function checkExistingRequest(itemId) {
                 var checkItemId = parseInt(itemId);
                 var status = conv.status || 'pending';
                 var isMatch = convItemId === checkItemId;
-                var isValidStatus = (status === 'pending' || status === 'accepted');
-                console.log('Comparing:', { convItemId, checkItemId, isMatch, status, isValidStatus });
-                // Only block if conversation is pending or accepted (not rejected or completed)
+                var isValidStatus = (status === 'pending' || status === 'accepted' || status === 'partial_confirmed');
                 return isMatch && isValidStatus;
             });
-            console.log('checkExistingRequest - itemId:', itemId, 'Found:', !!existingConv, 'All conversations:', response.data);
             return !!existingConv;
         }
-        console.log('checkExistingRequest - No data or invalid response');
         return false;
     } catch (error) {
         console.error('Error checking existing request:', error);
@@ -530,7 +549,6 @@ async function requestItem() {
     
     // Check if request already exists
     var hasExistingRequest = await checkExistingRequest(currentItem.id);
-    console.log('requestItem - hasExistingRequest:', hasExistingRequest, 'for item:', currentItem.id);
     if (hasExistingRequest) {
         showToast(t('requestAlreadySent') || 'You have already sent a request for this item');
         // Update button state
@@ -559,6 +577,21 @@ async function sendDonationRequest() {
     if (!currentItem) return;
     
     var message = "Hi! I'm interested in this item. When and where can we meet?";
+    
+    // Translate message to user's language (ALWAYS try translation)
+    try {
+        var userLang = getCurrentLanguage();
+        if (userLang && userLang !== 'en') {
+            // Pass 'en' as sourceLang since the message is in English
+            var translatedMsg = await autoTranslateText(message, userLang, 'en');
+            if (translatedMsg) {
+                message = translatedMsg;
+            }
+        }
+    } catch (error) {
+        // Use original message if translation fails
+    }
+    
     try {
         await createMessage(currentItem, message);
         showToast(t('requestSent'));

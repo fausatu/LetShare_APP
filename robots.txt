@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /Post_images/
+Disallow: /Univ_Logo/
+
+Sitemap: https://letshare-app.fr/sitemap.xml

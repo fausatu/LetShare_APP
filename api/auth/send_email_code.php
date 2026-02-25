@@ -51,6 +51,12 @@ try {
 ob_clean();
 
 try {
+    // Rate limiting: 3 email codes per 15 minutes per IP (prevent email spam)
+    $clientIP = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    if (!applyRateLimit('send_email_code', 3, 900, $clientIP, 'Trop de demandes de code. Veuillez réessayer dans {minutes} minute(s).')) {
+        exit;
+    }
+    
     // Get request data
     $data = getRequestData();
     $email = trim($data['email'] ?? '');
