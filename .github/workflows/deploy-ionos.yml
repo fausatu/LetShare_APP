@@ -34,12 +34,11 @@ jobs:
           TARGET_DIR="${FTP_TARGET_DIR:-/letshare_ci/}"
           timeout 20m lftp -e "
             set cmd:fail-exit yes;
-            set ftp:ssl-allow no;
-            set ssl:verify-certificate no;
+            set sftp:auto-confirm yes;
             set net:max-retries 1;
             set net:reconnect-interval-base 5;
             set net:timeout 20;
-            open -u $FTP_USERNAME,$FTP_PASSWORD $FTP_SERVER;
+            open -u $FTP_USERNAME,$FTP_PASSWORD sftp://$FTP_SERVER;
             mirror -R ./ $TARGET_DIR \
               --delete \
               --verbose \
