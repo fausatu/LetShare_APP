@@ -25,16 +25,10 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --no-dev
 
-      - name: Install lftp
-        run: sudo apt-get update && sudo apt-get install -y lftp
-
       - name: Deploy via FTP (lftp mirror)
+        if: ${{ env.FTP_SERVER != '' && env.FTP_USERNAME != '' && env.FTP_PASSWORD != '' }}
         run: |
-          if [ -z "$FTP_SERVER" ] || [ -z "$FTP_USERNAME" ] || [ -z "$FTP_PASSWORD" ]; then
-            echo "Missing FTP secrets. Please configure IONOS_FTP_SERVER, IONOS_FTP_USERNAME, and IONOS_FTP_PASSWORD."
-            exit 1
-          fi
-
+          sudo apt-get update && sudo apt-get install -y lftp
           lftp -e "
             set ftp:ssl-allow no;
             set ssl:verify-certificate no;
@@ -50,3 +44,7 @@ jobs:
               --exclude-glob README.md;
             bye
           "
+
+      - name: Warn if FTP secrets are not configured
+        if: ${{ env.FTP_SERVER == '' || env.FTP_USERNAME == '' || env.FTP_PASSWORD == '' }}
+        run: echo "::warning::FTP secrets (IONOS_FTP_SERVER, IONOS_FTP_USERNAME, IONOS_FTP_PASSWORD) are not configured. Deployment was skipped."
