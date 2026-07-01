@@ -3,7 +3,7 @@
 
 USE letshare_db;
 
--- Add 'cancelled' to the status ENUM
+-- Add 'cancelled' to the status ENUM (must include ALL existing values including partial_confirmed)
 ALTER TABLE conversations 
-MODIFY COLUMN status ENUM('pending', 'accepted', 'rejected', 'completed', 'cancelled') DEFAULT 'pending';
+MODIFY COLUMN status ENUM('pending', 'accepted', 'rejected', 'completed', 'partial_confirmed', 'cancelled') DEFAULT 'pending';
 
