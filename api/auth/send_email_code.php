@@ -40,7 +40,6 @@ try {
     ob_clean();
     header('Content-Type: application/json; charset=utf-8');
     http_response_code(500);
-    error_log('Error loading required files: ' . $e->getMessage());
     echo json_encode([
         'success' => false,
         'message' => 'Server configuration error. Please try again later.'
@@ -51,6 +50,12 @@ try {
 ob_clean();
 
 try {
+    // Rate limiting: 3 email codes per 15 minutes per IP (prevent email spam)
+    $clientIP = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    if (!applyRateLimit('send_email_code', 3, 900, $clientIP, 'Trop de demandes de code. Veuillez réessayer dans {minutes} minute(s).')) {
+        exit;
+    }
+    
     // Get request data
     $data = getRequestData();
     $email = trim($data['email'] ?? '');
@@ -75,14 +80,13 @@ try {
     }
 
     // Generate 6-digit code
-    $code = sprintf('%06d', mt_rand(0, 999999));
+    $code = sprintf('%06d', random_int(0, 999999));
     
     // Store code in session (valid for 10 minutes)
     $_SESSION['email_code'] = $code;
     $_SESSION['email_code_email'] = $email;
     $_SESSION['email_code_expires'] = time() + 600;
     
-    error_log('Email code generated for: ' . $email . ' - Code: ' . $code);
     
     // Get user name if exists
     try {
@@ -92,7 +96,6 @@ try {
         $user = $stmt->fetch();
         $name = $user ? $user['name'] : 'Utilisateur';
     } catch (Exception $e) {
-        error_log('Error getting user name: ' . $e->getMessage());
         $name = 'Utilisateur';
     }
     
@@ -104,8 +107,6 @@ try {
     } else {
         // In debug mode, still allow the code to work for testing
         if (defined('DEBUG_MODE') && DEBUG_MODE) {
-            error_log('DEBUG MODE: Email failed but allowing code to work');
-            error_log('DEBUG CODE for ' . $email . ': ' . $code);
             sendResponse(true, 'Code generated (check logs for debug code)', ['email' => $email, 'debug_note' => 'Email failed but code stored in session']);
         } else {
             sendResponse(false, 'Failed to send email. Please try again later.', null, 500);
@@ -113,7 +114,6 @@ try {
     }
 
 } catch (Exception $e) {
-    error_log('Send email code error: ' . $e->getMessage());
     sendResponse(false, 'An error occurred. Please try again later.', null, 500);
 }
 
@@ -121,13 +121,11 @@ try {
  * Send email code using native SMTP
  */
 function sendEmailCodeViaNativeSMTP($email, $name, $code) {
-    error_log('=== Starting native SMTP email send ===');
     
     // Check SMTP configuration
     $requiredConstants = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USERNAME', 'SMTP_PASSWORD', 'SMTP_FROM_EMAIL', 'SMTP_FROM_NAME'];
     foreach ($requiredConstants as $constant) {
         if (!defined($constant) || empty(constant($constant))) {
-            error_log("ERROR: $constant not defined or empty");
             return false;
         }
     }

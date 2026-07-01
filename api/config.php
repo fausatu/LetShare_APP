@@ -22,15 +22,12 @@ if (file_exists($envPath)) {
         $dotenv->load();
     } catch (Exception $e) {
         // Log the error and use fallback configuration
-        error_log('ERROR: Failed to load .env file: ' . $e->getMessage());
-        error_log('The .env file may be corrupted. Please check the file format.');
         // Continue with fallback values below
     }
 } else {
     // Fallback: use hardcoded values if .env doesn't exist (development only)
     // WARNING: This should never happen in production!
     if (php_sapi_name() !== 'cli') {
-        error_log('WARNING: .env file not found. Using fallback configuration. This should not happen in production!');
     }
 }
 
@@ -48,7 +45,6 @@ define('DB_CHARSET', $_ENV['DB_CHARSET'] ?? 'utf8mb4');
 // JWT Secret key - MUST be set in production
 $jwtSecret = $_ENV['JWT_SECRET'] ?? 'your-secret-key-change-this-in-production';
 if (!$isDevelopment && $jwtSecret === 'your-secret-key-change-this-in-production') {
-    error_log('ERROR: JWT_SECRET must be changed in production!');
 }
 define('JWT_SECRET', $jwtSecret);
 
@@ -72,10 +68,14 @@ define('APP_BASE_URL', $_ENV['APP_BASE_URL'] ?? '');
 define('VAPID_PUBLIC_KEY', $_ENV['VAPID_PUBLIC_KEY'] ?? '');
 define('VAPID_PRIVATE_KEY', $_ENV['VAPID_PRIVATE_KEY'] ?? '');
 
+// Application Constants
+define('ONLINE_THRESHOLD_SECONDS', 300); // 5 minutes - user considered online if seen within this time
+define('EMAIL_CODE_EXPIRY_SECONDS', 600); // 10 minutes - verification codes expire after this
+define('TERMS_VERSION', $_ENV['TERMS_VERSION'] ?? '2026-01-12'); // Current terms version
+
 // Debug Mode - NEVER true in production
 $debugMode = isset($_ENV['DEBUG_MODE']) ? ($_ENV['DEBUG_MODE'] === 'true' || $_ENV['DEBUG_MODE'] === '1') : false;
 if (!$isDevelopment && $debugMode) {
-    error_log('WARNING: DEBUG_MODE should be false in production!');
     $debugMode = false; // Force false in production
 }
 define('DEBUG_MODE', $debugMode);
@@ -140,7 +140,7 @@ if (!headers_sent()) {
         }
     }
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-CSRF-Token');
     header('Access-Control-Max-Age: 86400');
     header('Vary: Origin');
     
@@ -174,7 +174,6 @@ function getDBConnection() {
         return $pdo;
     } catch (PDOException $e) {
         // Log detailed error for debugging
-        error_log('Database connection failed: ' . $e->getMessage());
         
         // Throw exception instead of exit() to allow proper error handling
         // This allows calling functions to handle the error gracefully
@@ -243,7 +242,7 @@ function sendResponse($success, $message, $data = null, $statusCode = 200) {
         }
         
         header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS');
-        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-CSRF-Token');
         header('Access-Control-Max-Age: 86400');
         header('Vary: Origin');
         
@@ -279,13 +278,11 @@ function getRequestData() {
         
         // Only log in development
         if (isDevelopment()) {
-            error_log('getRequestData - Raw input: ' . substr($rawInput, 0, 500));
         }
         
         $data = json_decode($rawInput, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             if (isDevelopment()) {
-                error_log('getRequestData - JSON decode error: ' . json_last_error_msg());
             }
             return [];
         }
@@ -300,26 +297,72 @@ function getRequestData() {
  */
 function startSessionIfNotStarted() {
     if (session_status() === PHP_SESSION_NONE) {
+        $isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+        session_set_cookie_params([
+            'lifetime' => 0,
+            'path' => '/',
+            'secure' => $isSecure,
+            'httponly' => true,
+            'samesite' => 'Lax'
+        ]);
         session_start();
     }
 }
 
 /**
- * Verify JWT token (simple implementation - use a library in production)
+ * Verify authentication token
+ * 
+ * This validates the token against both the session AND the database to ensure:
+ * 1. The session is valid
+ * 2. The user still exists in the database
+ * 3. The token hasn't been tampered with
+ * 
+ * @param string $token The authentication token
+ * @return array|false User data if valid, false otherwise
  */
 function verifyToken($token) {
-    // Simple token verification - in production, use a proper JWT library
-    // For now, we'll use session-based authentication
-    startSessionIfNotStarted();
-    
-    if (isset($_SESSION['user_id']) && isset($_SESSION['token']) && $_SESSION['token'] === $token) {
-        return [
-            'user_id' => $_SESSION['user_id'],
-            'email' => $_SESSION['email'] ?? null
-        ];
+    if (empty($token)) {
+        return false;
     }
     
-    return false;
+    startSessionIfNotStarted();
+    
+    // Check session token matches
+    if (!isset($_SESSION['user_id']) || !isset($_SESSION['token'])) {
+        return false;
+    }
+    
+    // Use timing-safe comparison to prevent timing attacks
+    if (!hash_equals($_SESSION['token'], $token)) {
+        return false;
+    }
+    
+    // Verify user still exists in database and is valid
+    try {
+        $pdo = getDBConnection();
+        $stmt = $pdo->prepare("SELECT id, email FROM users WHERE id = ? LIMIT 1");
+        $stmt->execute([$_SESSION['user_id']]);
+        $user = $stmt->fetch();
+        
+        if (!$user) {
+            // User was deleted, invalidate session
+            session_destroy();
+            return false;
+        }
+        
+        // Verify email matches (in case of session hijacking with different user)
+        if (isset($_SESSION['email']) && $user['email'] !== $_SESSION['email']) {
+            session_destroy();
+            return false;
+        }
+        
+        return [
+            'user_id' => $user['id'],
+            'email' => $user['email']
+        ];
+    } catch (Exception $e) {
+        return false;
+    }
 }
 
 /**
@@ -355,7 +398,6 @@ function getCurrentUser() {
         return $user;
     } catch (PDOException $e) {
         // Log error but don't expose details
-        error_log('Error getting current user: ' . $e->getMessage());
         return null;
     }
 }
@@ -404,7 +446,7 @@ function requireAuth() {
         }
         
         header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS');
-        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-CSRF-Token');
         header('Access-Control-Max-Age: 86400');
         header('Vary: Origin');
     }
@@ -431,7 +473,6 @@ function handleDatabaseError($e, $context = '') {
         $logMessage .= ' in ' . $context;
     }
     $logMessage .= ': ' . $e->getMessage();
-    error_log($logMessage);
     
     if ($isDev) {
         // Development: return detailed error
@@ -455,7 +496,6 @@ function handleError($e, $context = '', $genericMessage = 'An error occurred. Pl
         $logMessage .= ' in ' . $context;
     }
     $logMessage .= ': ' . $e->getMessage();
-    error_log($logMessage);
     
     if ($isDev) {
         // Development: return detailed error
@@ -463,6 +503,108 @@ function handleError($e, $context = '', $genericMessage = 'An error occurred. Pl
     } else {
         // Production: return generic error
         sendResponse(false, $genericMessage, null, 500);
+    }
+}
+
+/**
+ * Debug log - only logs if DEBUG_MODE is enabled
+ * Use this for verbose/debug logs that shouldn't appear in production
+ * 
+ * @param string $message The message to log
+ * @param string $context Optional context (e.g., function name)
+ */
+function debugLog($message, $context = '') {
+    if (defined('DEBUG_MODE') && DEBUG_MODE) {
+        $logMessage = $context ? "[$context] $message" : $message;
+    }
+}
+
+/**
+ * Error log - always logs (for real errors)
+ * Use this for actual errors that should always be logged
+ * 
+ * @param string $message The error message
+ * @param string $context Optional context
+ */
+function errorLog($message, $context = '') {
+    $logMessage = $context ? "ERROR [$context] $message" : "ERROR: $message";
+}
+
+/**
+ * CSRF Token Functions
+ * Protects against Cross-Site Request Forgery attacks
+ */
+
+/**
+ * Generate or retrieve CSRF token from session
+ * 
+ * @return string The CSRF token
+ */
+function getCSRFToken() {
+    startSessionIfNotStarted();
+    
+    // Generate new token if not exists or expired (1 hour expiry)
+    if (!isset($_SESSION['csrf_token']) || !isset($_SESSION['csrf_token_time']) || 
+        (time() - $_SESSION['csrf_token_time']) > 3600) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        $_SESSION['csrf_token_time'] = time();
+    }
+    
+    return $_SESSION['csrf_token'];
+}
+
+/**
+ * Validate CSRF token from request
+ * 
+ * @param string|null $token Token from request header or body
+ * @return bool True if valid
+ */
+function validateCSRFToken($token = null) {
+    startSessionIfNotStarted();
+    
+    // Get token from header if not provided
+    if ($token === null) {
+        $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
+    }
+    
+    // Also check in request body as fallback
+    if ($token === null) {
+        $data = getRequestData();
+        $token = $data['_csrf_token'] ?? null;
+    }
+    
+    if (empty($token) || !isset($_SESSION['csrf_token'])) {
+        return false;
+    }
+    
+    // Timing-safe comparison
+    return hash_equals($_SESSION['csrf_token'], $token);
+}
+
+/**
+ * Require valid CSRF token for state-changing requests
+ * Call this at the start of POST/PUT/DELETE endpoints
+ * 
+ * @param bool $skipInDev Skip CSRF check in development (default: false)
+ */
+function requireCSRFToken($skipInDev = false) {
+    // Skip for OPTIONS (preflight) requests
+    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        return;
+    }
+    
+    // Skip for GET requests (they should be idempotent)
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        return;
+    }
+    
+    // Optionally skip in development for easier testing
+    if ($skipInDev && isDevelopment()) {
+        return;
+    }
+    
+    if (!validateCSRFToken()) {
+        sendResponse(false, 'Invalid or missing CSRF token', null, 403);
     }
 }
 
@@ -477,9 +619,7 @@ function handleError($e, $context = '', $genericMessage = 'An error occurred. Pl
  * @return bool|array Returns false if rate limit exceeded, or array with remaining attempts and reset time
  */
 function checkRateLimit($key, $maxAttempts = 60, $windowSeconds = 60, $identifier = null) {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    startSessionIfNotStarted();
     
     // Use IP address if identifier not provided
     if ($identifier === null) {
@@ -603,9 +743,7 @@ function getClientIdentifier() {
  * @param string|null $identifier Optional identifier (defaults to IP)
  */
 function resetRateLimit($key, $identifier = null) {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
+    startSessionIfNotStarted();
     
     $clientIdentifier = $identifier ?: getClientIdentifier();
     $rateLimitKey = 'rate_limit_' . $key . '_' . md5($clientIdentifier);

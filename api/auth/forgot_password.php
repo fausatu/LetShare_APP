@@ -118,7 +118,6 @@ try {
     } catch (PDOException $e) {
         // Check if columns don't exist (migration not run)
         if (strpos($e->getMessage(), "Unknown column 'password_reset_token'") !== false) {
-            error_log('Password reset columns not found. Please run migration_password_reset.sql');
             sendResponse(false, 'Password reset feature is not configured. Please contact administrator.', null, 500);
             exit();
         }
@@ -207,7 +206,6 @@ try {
     ";
     
     // Send password reset email using native SMTP
-    error_log('Sending password reset email to: ' . $email);
     
     try {
         $emailSent = sendEmailViaSMTP(
@@ -223,12 +221,9 @@ try {
         );
         
         if ($emailSent) {
-            error_log('✅ Password reset email sent successfully to: ' . $email);
         } else {
-            error_log('❌ Failed to send password reset email to: ' . $email);
         }
     } catch (Exception $e) {
-        error_log('❌ SMTP error sending password reset email: ' . $e->getMessage());
         $emailSent = false;
     }
     
@@ -236,10 +231,8 @@ try {
     sendResponse(true, 'If this email is registered, a password reset link has been sent.');
     
 } catch (PDOException $e) {
-    error_log('Forgot password PDO error: ' . $e->getMessage());
     handleDatabaseError($e, 'forgot_password');
 } catch (Exception $e) {
-    error_log('Forgot password error: ' . $e->getMessage());
     sendResponse(false, 'An error occurred. Please try again later.', null, 500);
 }
 

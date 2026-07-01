@@ -4,6 +4,11 @@ require_once 'config.php';
 $method = $_SERVER['REQUEST_METHOD'];
 $user = requireAuth();
 
+// Require CSRF token for state-changing requests
+if ($method !== 'GET') {
+    requireCSRFToken();
+}
+
 try {
     $pdo = getDBConnection();
     
@@ -15,7 +20,7 @@ try {
             $stmt = $pdo->prepare("
                 SELECT u.id, u.name, u.email, u.department, u.avatar, u.language, u.created_at, u.university_id,
                        u.show_department, u.show_email, u.allow_messages_from_anyone, u.terms_accepted_at, u.terms_version,
-                       u.auto_delete_rejected_conversations,
+                       u.auto_delete_rejected_conversations, u.notification_preferences,
                        univ.name as university_name, univ.code as university_code, univ.logo as university_logo
                 FROM users u
                 LEFT JOIN universities univ ON u.university_id = univ.id
@@ -31,6 +36,11 @@ try {
                 $userData['allow_messages_from_anyone'] = (bool)($userData['allow_messages_from_anyone'] ?? true);
                 $userData['auto_delete_rejected_conversations'] = (bool)($userData['auto_delete_rejected_conversations'] ?? true);
                 
+                // Decode notification preferences JSON
+                $userData['notification_preferences'] = $userData['notification_preferences'] 
+                    ? json_decode($userData['notification_preferences'], true) 
+                    : ['messages' => true, 'requests' => true, 'accepted' => true, 'reviews' => true];
+                
                 // Check if terms acceptance is required
                 $userData['terms_required'] = empty($userData['terms_accepted_at']);
                 
@@ -39,6 +49,10 @@ try {
                 if ($userId != $user['id']) {
                     unset($userData['terms_accepted_at']);
                     unset($userData['terms_version']);
+                    // Hide email if user has not opted to show it
+                    if (!($userData['show_email'] ?? false)) {
+                        unset($userData['email']);
+                    }
                 }
             }
             
@@ -140,6 +154,12 @@ try {
                 $params[] = (bool)$data['auto_delete_rejected_conversations'] ? 1 : 0;
             }
             
+            // Notification preferences (JSON)
+            if (isset($data['notification_preferences'])) {
+                $updates[] = "notification_preferences = ?";
+                $params[] = json_encode($data['notification_preferences']);
+            }
+            
             if (empty($updates)) {
                 sendResponse(false, 'No fields to update', null, 400);
             }
@@ -154,7 +174,7 @@ try {
             $stmt = $pdo->prepare("
                 SELECT u.id, u.name, u.email, u.department, u.avatar, u.language, u.university_id,
                        u.show_department, u.show_email, u.allow_messages_from_anyone,
-                       u.auto_delete_rejected_conversations,
+                       u.auto_delete_rejected_conversations, u.notification_preferences,
                        univ.name as university_name, univ.code as university_code, univ.logo as university_logo
                 FROM users u
                 LEFT JOIN universities univ ON u.university_id = univ.id
@@ -169,6 +189,11 @@ try {
                 $updatedUser['show_email'] = (bool)($updatedUser['show_email'] ?? false);
                 $updatedUser['allow_messages_from_anyone'] = (bool)($updatedUser['allow_messages_from_anyone'] ?? true);
                 $updatedUser['auto_delete_rejected_conversations'] = (bool)($updatedUser['auto_delete_rejected_conversations'] ?? true);
+                
+                // Decode notification preferences JSON
+                $updatedUser['notification_preferences'] = $updatedUser['notification_preferences'] 
+                    ? json_decode($updatedUser['notification_preferences'], true) 
+                    : ['messages' => true, 'requests' => true, 'accepted' => true, 'reviews' => true];
             }
             
             sendResponse(true, 'Profile updated successfully', $updatedUser);

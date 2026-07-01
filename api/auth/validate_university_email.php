@@ -9,14 +9,12 @@ function validateUniversityEmail($email) {
     try {
         $pdo = getDBConnection();
     } catch (PDOException $e) {
-        error_log('Database connection error in validateUniversityEmail: ' . $e->getMessage());
         // Return error instead of letting getDBConnection() exit
         return [
             'valid' => false,
             'message' => 'Database connection error. Please try again later.'
         ];
     } catch (Exception $e) {
-        error_log('Error getting DB connection in validateUniversityEmail: ' . $e->getMessage());
         return [
             'valid' => false,
             'message' => 'Server error. Please try again later.'
@@ -28,7 +26,8 @@ function validateUniversityEmail($email) {
     if (count($emailParts) !== 2) {
         return [
             'valid' => false,
-            'message' => 'Invalid email format'
+            'message' => 'Format d\'email invalide. Veuillez entrer une adresse email valide.',
+            'error_type' => 'invalid_format'
         ];
     }
     
@@ -58,16 +57,15 @@ function validateUniversityEmail($email) {
         
         return [
             'valid' => false,
-            'message' => 'Your university is not yet a partner. Please contact us to add your university.'
+            'message' => 'Votre université n\'est pas encore partenaire. Contactez-nous pour ajouter votre université à LetShare.',
+            'error_type' => 'university_not_partner'
         ];
     } catch (PDOException $e) {
-        error_log('Database query error in validateUniversityEmail: ' . $e->getMessage());
         return [
             'valid' => false,
             'message' => 'Database error. Please try again later.'
         ];
     } catch (Exception $e) {
-        error_log('Unexpected error in validateUniversityEmail: ' . $e->getMessage());
         return [
             'valid' => false,
             'message' => 'An error occurred. Please try again later.'
