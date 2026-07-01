@@ -16,6 +16,7 @@ api/test_logs.php
 api/test-logging.php
 api/test-feedback.php
 api/auth/debug.php
+api/auth/send_email_code_backup.php
 database/check_enum.php
 *.log
 *.tmp
