@@ -8,6 +8,8 @@ $method = $_SERVER['REQUEST_METHOD'];
 $user = null;
 if ($method !== 'GET') {
     $user = requireAuth();
+    // Require CSRF token for state-changing requests
+    requireCSRFToken();
 } else {
     // Try to get current user, but don't require it
     $user = getCurrentUser();
@@ -36,6 +38,7 @@ try {
             $conditionFilter = $_GET['condition'] ?? null;
             $urgentOnly = isset($_GET['urgent']) && $_GET['urgent'] === 'true';
             $searchQuery = $_GET['search'] ?? null;
+            $posterIdFilter = isset($_GET['poster_id']) ? (int)$_GET['poster_id'] : null;
             
             if ($filter === 'my') {
                 // Get user's own items (requires authentication)
@@ -119,16 +122,30 @@ try {
                     $params[] = $userId;
                 }
                 
-                // Exclude user's own items only if user is logged in
-                if ($userId) {
-                    $sql .= " AND i.user_id != ?";
-                    $params[] = $userId;
+                // Filter by specific poster (for public profile view)
+                if ($posterIdFilter) {
+                    $sql .= " AND i.user_id = ?";
+                    $params[] = $posterIdFilter;
+                } else {
+                    // Exclude user's own items only if user is logged in
+                    if ($userId) {
+                        $sql .= " AND i.user_id != ?";
+                        $params[] = $userId;
+                    }
+                    
+                    // Filter by university only if user is logged in
+                    if ($userId && $userUniversityId) {
+                        $sql .= " AND u.university_id = ?";
+                        $params[] = $userUniversityId;
+                    }
                 }
                 
-                // Filter by university only if user is logged in
-                if ($userId && $userUniversityId) {
-                    $sql .= " AND u.university_id = ?";
-                    $params[] = $userUniversityId;
+                // Exclude items from blocked users (both directions)
+                if ($userId) {
+                    $sql .= " AND i.user_id NOT IN (SELECT blocked_user_id FROM blocked_users WHERE blocking_user_id = ?)";
+                    $params[] = $userId;
+                    $sql .= " AND i.user_id NOT IN (SELECT blocking_user_id FROM blocked_users WHERE blocked_user_id = ?)";
+                    $params[] = $userId;
                 }
                 
                 // Apply filters
@@ -161,20 +178,39 @@ try {
             }
             $items = $stmt->fetchAll();
             
-            // Format items for frontend and get multiple images
-            $formattedItems = array_map(function($item) use ($pdo) {
-                // Get all images for this item
-                $stmt = $pdo->prepare("SELECT image_url FROM item_images WHERE item_id = ? ORDER BY display_order, id");
-                $stmt->execute([$item['id']]);
-                $images = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            // FIX N+1: Fetch all images in a single query
+            $itemIds = array_column($items, 'id');
+            $imagesMap = [];
+            
+            if (!empty($itemIds)) {
+                $placeholders = implode(',', array_fill(0, count($itemIds), '?'));
+                $imgStmt = $pdo->prepare("
+                    SELECT item_id, image_url 
+                    FROM item_images 
+                    WHERE item_id IN ($placeholders) 
+                    ORDER BY item_id, display_order, id
+                ");
+                $imgStmt->execute($itemIds);
+                $allImages = $imgStmt->fetchAll();
                 
-                // Log for debugging
-                error_log('Item ' . $item['id'] . ' - Found ' . count($images) . ' images in item_images table');
+                // Group images by item_id
+                foreach ($allImages as $img) {
+                    $itemId = $img['item_id'];
+                    if (!isset($imagesMap[$itemId])) {
+                        $imagesMap[$itemId] = [];
+                    }
+                    $imagesMap[$itemId][] = $img['image_url'];
+                }
+            }
+            
+            // Format items for frontend
+            $formattedItems = array_map(function($item) use ($imagesMap) {
+                // Get images from map (already fetched in single query)
+                $images = $imagesMap[$item['id']] ?? [];
                 
                 // If no images in item_images, use the old image field as fallback
                 if (empty($images) && !empty($item['image'])) {
                     $images = [$item['image']];
-                    error_log('Item ' . $item['id'] . ' - Using fallback single image from items.image field');
                 }
                 
                 // Check if user allows showing their department
@@ -250,9 +286,31 @@ try {
                 sendResponse(false, 'Title and type (donation/exchange) are required', null, 400);
             }
             
+            // Validate title and description length
+            if (strlen($title) > 255) {
+                sendResponse(false, 'Title is too long (max 255 characters)', null, 400);
+            }
+            if (strlen($description) > 5000) {
+                sendResponse(false, 'Description is too long (max 5000 characters)', null, 400);
+            }
+            
             // If images array is empty but single image is provided, use it
             if (empty($images) && !empty($image)) {
                 $images = [$image];
+            }
+            
+            // Validate images
+            $maxImages = 5;
+            $maxImageSize = 5 * 1024 * 1024; // 5MB per image (base64 encoded)
+            
+            if (count($images) > $maxImages) {
+                sendResponse(false, 'Too many images (max ' . $maxImages . ')', null, 400);
+            }
+            
+            foreach ($images as $index => $img) {
+                if (!empty($img) && strlen($img) > $maxImageSize) {
+                    sendResponse(false, 'Image ' . ($index + 1) . ' is too large (max 5MB)', null, 400);
+                }
             }
             
             $color = $type === 'donation' 
@@ -280,7 +338,6 @@ try {
             ]);
             
             if (!$result) {
-                error_log('Failed to insert item: ' . implode(', ', $stmt->errorInfo()));
                 sendResponse(false, 'Failed to create item', null, 500);
             }
             
@@ -299,7 +356,6 @@ try {
                 $insertedCount = 0;
                 $failedCount = 0;
                 
-                error_log('Inserting ' . count($images) . ' images for item ' . $itemId);
                 
                 foreach ($images as $index => $imgUrl) {
                     if (!empty(trim($imgUrl))) {
@@ -308,18 +364,13 @@ try {
                             $imgUrlTrimmed = trim($imgUrl);
                             $stmt->execute([$itemId, $imgUrlTrimmed, $index]);
                             $insertedCount++;
-                            error_log('Successfully inserted image ' . $index . ' for item ' . $itemId . ' (length: ' . strlen($imgUrlTrimmed) . ')');
                         } catch (PDOException $e) {
                             $failedCount++;
-                            error_log('Error inserting image ' . $index . ' for item ' . $itemId . ': ' . $e->getMessage());
-                            error_log('Image length: ' . strlen(trim($imgUrl)));
                             // Continue with other images even if one fails
                         }
                     }
                 }
-                error_log('Image insertion summary for item ' . $itemId . ': ' . $insertedCount . ' inserted, ' . $failedCount . ' failed out of ' . count($images) . ' total');
                 if ($insertedCount === 0 && !empty($images)) {
-                    error_log('Warning: No images were inserted for item ' . $itemId);
                 }
             }
             
@@ -411,16 +462,13 @@ try {
             $stmt->execute([$itemId, $user['id'], $itemId, $user['id']]);
             $conversationUsers = $stmt->fetchAll();
             
-            error_log('Found ' . count($conversationUsers) . ' users with conversations for item ' . $itemId);
             
             // 3. Mark all pending conversations as 'cancelled' (item_deleted)
             // First check what conversations exist
             $stmt = $pdo->prepare("SELECT id, status FROM conversations WHERE item_id = ?");
             $stmt->execute([$itemId]);
             $existingConversations = $stmt->fetchAll();
-            error_log('Found ' . count($existingConversations) . ' conversations for item ' . $itemId);
             foreach ($existingConversations as $conv) {
-                error_log('Conversation ID: ' . $conv['id'] . ', status: ' . $conv['status']);
             }
             
             // Now update them
@@ -431,15 +479,12 @@ try {
             ");
             $stmt->execute([$itemId]);
             $affectedConversations = $stmt->rowCount();
-            error_log('UPDATE query executed. Affected rows: ' . $affectedConversations);
             
             // Verify the update
             $stmt = $pdo->prepare("SELECT id, status FROM conversations WHERE item_id = ?");
             $stmt->execute([$itemId]);
             $updatedConversations = $stmt->fetchAll();
-            error_log('After update, conversations for item ' . $itemId . ':');
             foreach ($updatedConversations as $conv) {
-                error_log('Conversation ID: ' . $conv['id'] . ', status: ' . $conv['status']);
             }
             
             // 4. Get all users who have this item in their interested list
@@ -447,7 +492,6 @@ try {
             $stmt->execute([$itemId]);
             $interestedUsers = $stmt->fetchAll();
             
-            error_log('Found ' . count($interestedUsers) . ' interested users for item ' . $itemId);
             
             // 5. Combine interested users and conversation users, avoiding duplicates
             $allUsersToNotify = [];
@@ -479,7 +523,6 @@ try {
                 }
             }
             
-            error_log('Total unique users to notify: ' . count($allUsersToNotify));
             
             // 6. Notify all users and remove from interested list
             require_once 'notification_helper.php';
@@ -490,26 +533,25 @@ try {
                 $userId = $userToNotify['user_id'];
                 $hasInterested = $userToNotify['has_interested'];
                 $hasConversation = $userToNotify['has_conversation'];
-                error_log('Processing user: ' . $userId . ' (interested: ' . ($hasInterested ? 'yes' : 'no') . ', conversation: ' . ($hasConversation ? 'yes' : 'no') . ')');
                 
                 // Create notification (one notification per user, regardless of whether they have both interested and conversation)
                 try {
-                    error_log('Creating notification for user ' . $userId);
+                    $userLang = getUserLanguage($pdo, $userId);
+                    $notifTitle = getNotifText('item_no_longer_available', $userLang);
+                    $notifMsg = getNotifText('item_no_longer_available_msg', $userLang, ['type' => $itemTypeText, 'item' => $itemTitle]);
+                    
                     $notificationId = createNotification(
                         $pdo, 
                         $userId, 
                         'item_deleted', 
-                        'Item No Longer Available', 
-                        'The ' . $itemTypeText . ' "' . $itemTitle . '" is no longer available.',
+                        $notifTitle, 
+                        $notifMsg,
                         $itemId, 
                         null, 
                         $user['id']
                     );
-                    error_log('Notification created successfully with ID: ' . $notificationId);
                     $notifiedCount++;
                 } catch (Exception $e) {
-                    error_log('ERROR creating notification for user ' . $userId . ': ' . $e->getMessage());
-                    error_log('Stack trace: ' . $e->getTraceAsString());
                 }
                 
                 // Remove from interested list if user had item in interested
@@ -518,16 +560,13 @@ try {
                         $stmt = $pdo->prepare("DELETE FROM interested_items WHERE user_id = ? AND item_id = ?");
                         $stmt->execute([$userId, $itemId]);
                         if ($stmt->rowCount() > 0) {
-                            error_log('Removed item ' . $itemId . ' from interested list of user ' . $userId);
                             $removedCount++;
                         }
                     } catch (Exception $e) {
-                        error_log('ERROR removing item from interested list for user ' . $userId . ': ' . $e->getMessage());
                     }
                 }
             }
             
-            error_log('Summary: Notified ' . $notifiedCount . ' users, removed from ' . $removedCount . ' interested lists');
             
             sendResponse(true, 'Item deleted successfully', [
                 'conversations_cancelled' => $affectedConversations,

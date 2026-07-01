@@ -18,6 +18,12 @@ require_once __DIR__ . '/validate_university_email.php';
 ob_clean();
 
 try {
+    // Rate limiting: 5 attempts per 15 minutes per IP for code verification
+    $clientIP = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    if (!applyRateLimit('email_code_verify', 5, 900, $clientIP, 'Too many attempts. Please try again in {minutes} minute(s).')) {
+        exit;
+    }
+    
     $data = getRequestData();
     $email = trim($data['email'] ?? '');
     $code = trim($data['code'] ?? '');
@@ -40,20 +46,13 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Debug: Log session data
-error_log('Verify code - Session ID: ' . session_id());
-error_log('Verify code - Session keys: ' . (isset($_SESSION) ? implode(', ', array_keys($_SESSION)) : 'Session not set'));
 if (isset($_SESSION['email_code'])) {
-    error_log('Verify code - Stored code: ' . $_SESSION['email_code']);
-    error_log('Verify code - Stored email: ' . ($_SESSION['email_code_email'] ?? 'not set'));
 }
-error_log('Verify code - Received code: ' . $code);
-error_log('Verify code - Received email: ' . $email);
 
 // Verify code from session
 if (!isset($_SESSION['email_code']) || 
     !isset($_SESSION['email_code_email']) || 
     !isset($_SESSION['email_code_expires'])) {
-    error_log('Email code verification: Session data missing. Session keys: ' . (isset($_SESSION) ? implode(', ', array_keys($_SESSION)) : 'Session not set'));
     sendResponse(false, 'No code found. Please request a new code.', null, 400);
 }
 
@@ -72,7 +71,6 @@ if ($_SESSION['email_code_email'] !== $email) {
 
 // Verify code
 if ($_SESSION['email_code'] !== $code) {
-    error_log('Email code verification failed. Expected: ' . $_SESSION['email_code'] . ', Received: ' . $code);
     sendResponse(false, 'Invalid code. Please check and try again.', null, 400);
 }
 
@@ -144,10 +142,8 @@ try {
 }
 
 } catch (PDOException $e) {
-    error_log('Verify email code PDO error: ' . $e->getMessage());
     sendResponse(false, 'Database error. Please try again later.', null, 500);
 } catch (Exception $e) {
-    error_log('Verify email code error: ' . $e->getMessage());
     sendResponse(false, 'Error verifying. Please try again.', null, 500);
 }
 

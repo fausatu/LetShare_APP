@@ -89,11 +89,9 @@ function sendVerificationEmail($email, $name, $token) {
     );
     
     if (!$result) {
-        error_log('Failed to send verification email to: ' . $email);
         // In development, you might want to log the token instead of failing
         // This allows testing without actual email configuration
         if (defined('DEBUG_MODE') && DEBUG_MODE) {
-            error_log('DEBUG: Verification token for ' . $email . ': ' . $token);
         }
         return false;
     }

@@ -78,9 +78,6 @@ async function openModal(item) {
     // Get all images (use images array if available, otherwise fallback to single image)
     modalImages = item.images && item.images.length > 0 ? item.images : (item.image ? [item.image] : []);
     
-    console.log('openModal - item images:', modalImages);
-    console.log('openModal - item.images:', item.images);
-    console.log('openModal - item.image:', item.image);
     
     // Display images in carousel
     var carouselContainer = document.getElementById('carouselImages');
@@ -135,8 +132,38 @@ async function openModal(item) {
         }
     }
     
-    document.getElementById('modalTitle').textContent = item.title;
-    document.getElementById('modalDesc').textContent = item.description;
+    // Auto-translate title and description using API (like in items.js feed)
+    var modalTitleEl = document.getElementById('modalTitle');
+    var modalDescEl = document.getElementById('modalDesc');
+    var currentUser = getCurrentUserSync ? getCurrentUserSync() : null;
+    var isAuthor = currentUser && currentUser.id && item.user_id && currentUser.id === item.user_id;
+    var userLang = (window.getCurrentLanguage ? window.getCurrentLanguage() : 'en') || 'en';
+    var itemSourceLang = item.userLang || item.user_lang || item.lang || 'fr';
+    
+    // Set initial text with fallback
+    if (modalTitleEl) modalTitleEl.textContent = item.title || '';
+    if (modalDescEl) modalDescEl.textContent = item.description || '';
+    
+    // Only translate if not the author
+    if (!isAuthor) {
+        if (modalTitleEl && item.title && typeof autoTranslateText === 'function') {
+            autoTranslateText(item.title, userLang, itemSourceLang).then(function(translated) {
+                if (translated && translated !== item.title) {
+                    modalTitleEl.textContent = translated;
+                }
+            }).catch(function(error) {
+            });
+        }
+        
+        if (modalDescEl && item.description && typeof autoTranslateText === 'function') {
+            autoTranslateText(item.description, userLang, itemSourceLang).then(function(translated) {
+                if (translated && translated !== item.description) {
+                    modalDescEl.textContent = translated;
+                }
+            }).catch(function(error) {
+            });
+        }
+    }
     
     // Major / department (fallback if empty)
     var modalDepartmentEl = document.getElementById('modalDepartment');
@@ -190,6 +217,32 @@ async function openModal(item) {
     
     document.getElementById('modalUserName').textContent = item.user;
     
+    // Make avatar and username clickable to view public profile
+    var modalUserName = document.getElementById('modalUserName');
+    var currentUserForLink = getCurrentUserSync ? getCurrentUserSync() : null;
+    var itemUserId = item.userId || item.user_id;
+    var isOwnItem = currentUserForLink && currentUserForLink.id && itemUserId && currentUserForLink.id == itemUserId;
+    
+    if (!isOwnItem && itemUserId) {
+        var profileUrl = 'profile.html?user_id=' + itemUserId;
+        if (userAvatar) {
+            userAvatar.style.cursor = 'pointer';
+            userAvatar.onclick = function() { window.location.href = profileUrl; };
+        }
+        if (modalUserName) {
+            modalUserName.style.cursor = 'pointer';
+            modalUserName.style.textDecoration = 'underline';
+            modalUserName.style.textDecorationColor = 'transparent';
+            modalUserName.style.transition = 'text-decoration-color 0.2s';
+            modalUserName.onmouseover = function() { this.style.textDecorationColor = 'currentColor'; };
+            modalUserName.onmouseout = function() { this.style.textDecorationColor = 'transparent'; };
+            modalUserName.onclick = function() { window.location.href = profileUrl; };
+        }
+    } else {
+        if (userAvatar) { userAvatar.style.cursor = 'default'; userAvatar.onclick = null; }
+        if (modalUserName) { modalUserName.style.cursor = 'default'; modalUserName.style.textDecoration = 'none'; modalUserName.onclick = null; }
+    }
+    
     // Display university if available
     var modalUniversity = document.getElementById('modalUniversity');
     var modalUniversityLogo = document.getElementById('modalUniversityLogo');
@@ -225,7 +278,6 @@ async function openModal(item) {
     
     // Check for existing request
     var hasExistingRequest = await checkExistingRequest(item.id);
-    console.log('openModal - hasExistingRequest:', hasExistingRequest, 'for item:', item.id);
     
     if (hasExistingRequest) {
         if (btnContact) {
@@ -261,7 +313,6 @@ async function openModal(item) {
                     reviews = userReviewData && userReviewData.reviews ? userReviewData.reviews.length : 0;
                 }
             } catch (error) {
-                console.error('Error loading rating:', error);
                 // Fallback to static data
                 var userReviewData = userReviews[item.user];
                 rating = userReviewData ? userReviewData.rating : 0;
@@ -347,27 +398,27 @@ function updateCarousel() {
 }
 
 // Reviews Modal
-async function openReviewsModal() {
-    if (!currentItem) return;
-    
+async function openReviewsModal(userId) {
     var reviewsList = document.getElementById('reviewsList');
     if (!reviewsList) return;
     
     reviewsList.innerHTML = '<div style="text-align: center; padding: 2rem; color:rgb(16, 66, 154);">Loading reviews...</div>';
     
     try {
-        // Get user ID from item
-        var itemUserId = currentItem.userId || currentItem.user_id;
+        // Get user ID from parameter or from currentItem
+        var itemUserId = userId || (currentItem ? (currentItem.userId || currentItem.user_id) : null);
         
         if (!itemUserId) {
-            console.error('No userId found in currentItem:', currentItem);
             reviewsList.innerHTML = '<p style="color: #ef4444; text-align: center; padding: 2rem;">Error: User information not available.</p>';
-            document.getElementById('reviewsModal').classList.add('active');
+            var reviewsElErr = document.getElementById('reviewsModal');
+            if (reviewsElErr.parentElement !== document.body) {
+                document.body.appendChild(reviewsElErr);
+            }
+            reviewsElErr.classList.add('active');
             document.body.classList.add('modal-open');
             return;
         }
         
-        console.log('Loading reviews for userId:', itemUserId);
         const response = await reviewsAPI.get(itemUserId);
         
         if (response.success && response.data) {
@@ -375,9 +426,23 @@ async function openReviewsModal() {
             reviewsList.innerHTML = '';
             
             if (reviews.length === 0) {
-                reviewsList.innerHTML = '<p style="color: #9ca3af; text-align: center; padding: 2rem;">No reviews yet for ' + currentItem.user + '.</p>';
+                var userName = currentItem ? currentItem.user : 'this user';
+                reviewsList.innerHTML = '<p style="color: #9ca3af; text-align: center; padding: 2rem;">No reviews yet for ' + userName + '.</p>';
             } else {
-                reviews.forEach(function(review) {
+                var userLang = (window.getCurrentLanguage ? window.getCurrentLanguage() : 'en') || 'en';
+                
+                // Traduction asynchrone de chaque review
+                for (const review of reviews) {
+                    let reviewText = review.text || '';
+                    if (reviewText && typeof autoTranslateText === 'function') {
+                        try {
+                            const translated = await autoTranslateText(reviewText, userLang);
+                            if (translated && translated !== reviewText) {
+                                reviewText = translated;
+                            }
+                        } catch (e) { /* ignore erreur de traduction */ }
+                    }
+                    
                     var reviewDiv = document.createElement('div');
                     reviewDiv.className = 'review-item';
                     
@@ -441,25 +506,33 @@ async function openReviewsModal() {
                     
                     var textDiv = document.createElement('div');
                     textDiv.className = 'review-text';
-                    textDiv.textContent = review.text || '';
+                    textDiv.textContent = reviewText;
                     
                     reviewDiv.appendChild(headerDiv);
                     reviewDiv.appendChild(starsDiv);
                     reviewDiv.appendChild(textDiv);
                     
                     reviewsList.appendChild(reviewDiv);
-                });
+                }
             }
         } else {
             throw new Error(response.message || 'Failed to load reviews');
         }
         
-        document.getElementById('reviewsModal').classList.add('active');
+        // Move to body to escape .container stacking context
+        var reviewsEl = document.getElementById('reviewsModal');
+        if (reviewsEl.parentElement !== document.body) {
+            document.body.appendChild(reviewsEl);
+        }
+        reviewsEl.classList.add('active');
         document.body.classList.add('modal-open');
     } catch (error) {
-        console.error('Error loading reviews:', error);
         reviewsList.innerHTML = '<p style="color: #ef4444; text-align: center; padding: 2rem;">Error loading reviews. Please try again.</p>';
-        document.getElementById('reviewsModal').classList.add('active');
+        var reviewsEl2 = document.getElementById('reviewsModal');
+        if (reviewsEl2.parentElement !== document.body) {
+            document.body.appendChild(reviewsEl2);
+        }
+        reviewsEl2.classList.add('active');
         document.body.classList.add('modal-open');
     }
 }
@@ -485,7 +558,6 @@ function closeRequestModal() {
 async function checkExistingRequest(itemId) {
     try {
         const response = await messagesAPI.getAll();
-        console.log('checkExistingRequest - API response:', response);
         if (response.success && response.data && Array.isArray(response.data)) {
             // Check if any conversation exists for this item (only pending or accepted, not rejected)
             var existingConv = response.data.find(function(conv) {
@@ -494,18 +566,14 @@ async function checkExistingRequest(itemId) {
                 var checkItemId = parseInt(itemId);
                 var status = conv.status || 'pending';
                 var isMatch = convItemId === checkItemId;
-                var isValidStatus = (status === 'pending' || status === 'accepted');
-                console.log('Comparing:', { convItemId, checkItemId, isMatch, status, isValidStatus });
-                // Only block if conversation is pending or accepted (not rejected or completed)
+                var isValidStatus = (status === 'pending' || status === 'accepted' || status === 'partial_confirmed');
+                // Only block if conversation is pending, accepted, or partial_confirmed (not rejected, completed, or cancelled)
                 return isMatch && isValidStatus;
             });
-            console.log('checkExistingRequest - itemId:', itemId, 'Found:', !!existingConv, 'All conversations:', response.data);
             return !!existingConv;
         }
-        console.log('checkExistingRequest - No data or invalid response');
         return false;
     } catch (error) {
-        console.error('Error checking existing request:', error);
         return false;
     }
 }
@@ -530,7 +598,6 @@ async function requestItem() {
     
     // Check if request already exists
     var hasExistingRequest = await checkExistingRequest(currentItem.id);
-    console.log('requestItem - hasExistingRequest:', hasExistingRequest, 'for item:', currentItem.id);
     if (hasExistingRequest) {
         showToast(t('requestAlreadySent') || 'You have already sent a request for this item');
         // Update button state
@@ -620,7 +687,6 @@ async function createMessage(item, messageText) {
             throw new Error(response.message || 'Failed to send message');
         }
     } catch (error) {
-        console.error('Error creating message:', error);
         throw error;
     }
 }

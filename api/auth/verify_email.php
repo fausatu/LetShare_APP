@@ -81,7 +81,6 @@ try {
     exit();
     
 } catch (PDOException $e) {
-    error_log('Email verification error: ' . $e->getMessage());
     header('Location: ../../email_verification.php?status=error&message=' . urlencode('An error occurred during verification. Please try again.'));
     exit();
 }

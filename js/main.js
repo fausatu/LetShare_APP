@@ -8,6 +8,65 @@
 // Items array - will be loaded from API
 var items = [];
 
+// Current app version — update this when releasing new features
+var APP_VERSION = '1.1.0';
+
+/**
+ * Show "What's New" modal when user sees a new version for the first time
+ */
+function showWhatsNewModal() {
+    var lastSeen = localStorage.getItem('lastSeenVersion');
+    if (lastSeen === APP_VERSION) return;
+    
+    var overlay = document.createElement('div');
+    overlay.id = 'whatsNewOverlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:10100;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.3s ease;backdrop-filter:blur(4px);';
+    
+    var modal = document.createElement('div');
+    modal.style.cssText = 'background:white;border-radius:1.5rem;max-width:420px;width:90%;padding:2rem;box-shadow:0 25px 60px rgba(0,0,0,0.3);animation:fadeInUp 0.4s ease;text-align:center;max-height:90vh;overflow-y:auto;';
+    
+    modal.innerHTML = 
+        '<div style="font-size:3rem;margin-bottom:0.5rem;">🎉</div>' +
+        '<h2 style="margin:0 0 0.25rem;font-size:1.4rem;color:#111827;">' + (t('whatsNewTitle') || "What's New in v" + APP_VERSION) + '</h2>' +
+        '<p style="color:#6b7280;font-size:0.85rem;margin-bottom:1.5rem;">LetShare v' + APP_VERSION + '</p>' +
+        
+        '<div style="text-align:left;margin-bottom:1.5rem;">' +
+            '<div style="display:flex;gap:0.75rem;align-items:flex-start;margin-bottom:1.25rem;padding:1rem;background:#f0fdf4;border-radius:1rem;border:1px solid #d1fae5;">' +
+                '<span style="font-size:1.75rem;flex-shrink:0;">📸</span>' +
+                '<div>' +
+                    '<div style="font-weight:600;color:#111827;margin-bottom:0.25rem;">' + (t('whatsNewFeature1Title') || 'Photo Messages') + '</div>' +
+                    '<div style="font-size:0.85rem;color:#6b7280;line-height:1.5;">' + (t('whatsNewFeature1Desc') || 'Send images in conversations via the 📎 button.') + '</div>' +
+                '</div>' +
+            '</div>' +
+            '<div style="display:flex;gap:0.75rem;align-items:flex-start;padding:1rem;background:#eff6ff;border-radius:1rem;border:1px solid #dbeafe;">' +
+                '<span style="font-size:1.75rem;flex-shrink:0;">😊</span>' +
+                '<div>' +
+                    '<div style="font-weight:600;color:#111827;margin-bottom:0.25rem;">' + (t('whatsNewFeature2Title') || 'Emoji Reactions') + '</div>' +
+                    '<div style="font-size:0.85rem;color:#6b7280;line-height:1.5;">' + (t('whatsNewFeature2Desc') || 'React to messages with emojis by double-clicking.') + '</div>' +
+                '</div>' +
+            '</div>' +
+        '</div>' +
+        
+        '<button id="whatsNewCloseBtn" style="width:100%;padding:0.875rem;background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;border-radius:1rem;font-size:1rem;font-weight:600;cursor:pointer;transition:all 0.3s;box-shadow:0 4px 12px rgba(16,185,129,0.3);">' +
+            (t('whatsNewGotIt') || 'Got it!') +
+        '</button>';
+    
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    
+    function dismiss() {
+        localStorage.setItem('lastSeenVersion', APP_VERSION);
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 0.3s ease';
+        setTimeout(function() { overlay.remove(); }, 300);
+    }
+    
+    modal.querySelector('#whatsNewCloseBtn').addEventListener('click', dismiss);
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) dismiss();
+    });
+}
+
 // NOTE: loadItems(), renderItems(), toggleInterested() are now in js/items.js
 // NOTE: toggleFilters(), applyFilters(), clearFilters(), performSearch() are now in js/filters.js
 // NOTE: showToast(), formatTimeAgo() are now in js/utils.js
@@ -97,7 +156,17 @@ function createCard(item) {
         '<div class="card-overlay">' +
                 '<button class="btn-details">' + t('viewDetails') + '</button>' +
         '</div>';
-    
+
+    // Traduction automatique de la description si besoin (pas l'auteur)
+    var currentUser = getCurrentUserSync ? getCurrentUserSync() : null;
+    var isAuthor = currentUser && currentUser.id && item.user_id && currentUser.id === item.user_id;
+    var userLang = (window.getCurrentLanguage ? window.getCurrentLanguage() : 'en') || 'en';
+    if (!isAuthor && item.description) {
+        autoTranslateText(item.description, userLang).then(function(translated) {
+            var descElem = card.querySelector('.card-desc');
+            if (descElem) descElem.textContent = translated;
+        });
+    }
     grid.appendChild(card);
 }
 
@@ -125,7 +194,7 @@ async function loadUsersForHeader() {
                     avatarDiv.className = 'user-avatar-header';
                     
                     if (user.avatar) {
-                        avatarDiv.innerHTML = '<img src="' + user.avatar + '" alt="' + user.name + '">';
+                        avatarDiv.innerHTML = '<img src="' + escapeHtml(user.avatar) + '" alt="' + escapeHtml(user.name) + '">';
                     } else {
                         // Use initials
                         const initials = user.initials || (user.name ? user.name.split(' ').map(function(n) { return n[0]; }).join('').substring(0, 2).toUpperCase() : 'U');
@@ -147,7 +216,6 @@ async function loadUsersForHeader() {
             }
         }
     } catch (error) {
-        console.error('Error loading users for header:', error);
         // Don't show error to user, just log it
     }
 }
@@ -177,11 +245,13 @@ window.addEventListener('load', async function() {
                     }
                 }
             } catch (error) {
-                console.error('Error syncing language:', error);
             }
             
             // Apply translations immediately after syncing language
             applyTranslations();
+            
+            // Show "What's New" modal on first login after version update
+            showWhatsNewModal();
             
             // Check if terms acceptance is required
             checkTermsAcceptance();
@@ -198,7 +268,6 @@ window.addEventListener('load', async function() {
                         sessionStorage.removeItem('userProfileJustUpdated');
                         sessionStorage.removeItem('updatedUserData');
                     } catch (e) {
-                        console.error('Error parsing updated user data:', e);
                     }
                 }
             }
@@ -245,7 +314,6 @@ window.addEventListener('load', async function() {
                         }
                     }
                 } catch (error) {
-                    console.error('Error loading item for modal:', error);
                 }
                 // Clean up URL
                 window.history.replaceState({}, document.title, window.location.pathname);
@@ -270,7 +338,6 @@ window.addEventListener('load', async function() {
             disableGuestFeatures();
         }
     } catch (error) {
-        console.error('Error on page load:', error);
         // If error, show guest view
         var headerAuth = document.getElementById('headerAuthenticated');
         var headerGuest = document.getElementById('headerGuest');
@@ -288,15 +355,14 @@ async function updateProfileAvatar() {
     // Force refresh from API to get latest data
     try {
         const response = await authAPI.getCurrentUser();
-        if (response.success && response.data && response.data.user) {
+        if (response && response.success && response.data && response.data.user) {
             var user = response.data.user;
             // Update localStorage with fresh data
             localStorage.setItem('currentUser', JSON.stringify(user));
-            
             var profileLink = document.getElementById('profileLink');
             if (profileLink) {
                 if (user.avatar) {
-                    profileLink.innerHTML = '<img src="' + user.avatar + '" alt="Profile" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">';
+                    profileLink.innerHTML = '<img src="' + escapeHtml(user.avatar) + '" alt="Profile" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">';
                 } else {
                     var initials = user.name.split(' ').map(function(n) { return n[0]; }).join('');
                     profileLink.textContent = initials;
@@ -304,13 +370,12 @@ async function updateProfileAvatar() {
             }
         }
     } catch (error) {
-        console.error('Error updating profile avatar:', error);
         // Fallback to cached data
         var user = getCurrentUserSync();
         var profileLink = document.getElementById('profileLink');
         if (profileLink) {
             if (user.avatar) {
-                profileLink.innerHTML = '<img src="' + user.avatar + '" alt="Profile" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">';
+                profileLink.innerHTML = '<img src="' + escapeHtml(user.avatar) + '" alt="Profile" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">';
             } else {
                 profileLink.textContent = user.initials();
             }
@@ -320,7 +385,6 @@ async function updateProfileAvatar() {
 
 // Listen for profile updates from settings page
 window.addEventListener('userProfileUpdated', async function(event) {
-    console.log('Profile updated event received:', event.detail);
     if (event.detail) {
         // Update localStorage with new data
         localStorage.setItem('currentUser', JSON.stringify(event.detail));
@@ -336,7 +400,6 @@ window.addEventListener('focus', async function() {
     // Check if profile was updated while away
     var profileJustUpdated = sessionStorage.getItem('userProfileJustUpdated');
     if (profileJustUpdated === 'true') {
-        console.log('Profile was updated, refreshing...');
         await getCurrentUser(true);
         await updateProfileAvatar();
         sessionStorage.removeItem('userProfileJustUpdated');
@@ -395,11 +458,8 @@ async function updateNotificationBadge() {
             response = await notificationsAPI.getAll(1, true);
         }
         
-        console.log('Notification badge response:', response);
-        
         if (response.success && response.data) {
             var unreadCount = response.data.unread_count || response.data.count || 0;
-            console.log('Unread count:', unreadCount);
             
             if (unreadCount > 0) {
                 badge.textContent = unreadCount > 99 ? '99+' : unreadCount.toString();
@@ -408,11 +468,9 @@ async function updateNotificationBadge() {
                 badge.style.display = 'none';
             }
         } else {
-            console.log('No unread notifications or invalid response');
             badge.style.display = 'none';
         }
     } catch (error) {
-        console.error('Error updating notification badge:', error);
         badge.style.display = 'none';
     }
 }
@@ -426,12 +484,8 @@ async function loadNotifications() {
         
         const response = await notificationsAPI.getAll(50);
         
-        console.log('Notifications API response:', response);
-        
         if (response.success && response.data) {
             var notifications = response.data.notifications || [];
-            console.log('Notifications array:', notifications);
-            console.log('Number of notifications:', notifications.length);
             
             container.innerHTML = '';
             
@@ -440,9 +494,8 @@ async function loadNotifications() {
                 return;
             }
             
-            notifications.forEach(function(notification) {
-                console.log('Processing notification:', notification);
-                
+            // Use for...of loop to support async/await
+            for (const notification of notifications) {
                 var item = document.createElement('div');
                 // Check read_status - it might be 0/1 or false/true
                 var isRead = notification.read_status === 1 || notification.read_status === true || notification.read_status === '1';
@@ -460,22 +513,57 @@ async function loadNotifications() {
                 // Translate notification title
                 var translatedTitle = translateNotificationTitle(notification.title || 'Notification');
                 
+                // Translate notification message - hybrid approach
+                var translatedMessage = '';
+                
+                // Try pattern matching only for standard notification types (faster)
+                if (notification.type === 'request' || notification.type === 'acceptance' || notification.type === 'rejection') {
+                    translatedMessage = translateNotificationMessage(notification.message || '') || '';
+                }
+                
+                // For request/acceptance/rejection types, ALWAYS use API to ensure item titles are translated
+                if ((notification.type === 'request' || notification.type === 'acceptance' || notification.type === 'rejection') && notification.message) {
+                    var userLang = getCurrentLanguage();
+                    try {
+                        translatedMessage = await autoTranslateText(notification.message, userLang);
+                    } catch (e) {
+                        translatedMessage = notification.message;
+                    }
+                }
+                // For other types, only try API if pattern matching found nothing
+                else if (!translatedMessage && notification.message) {
+                    var userLang = getCurrentLanguage();
+                    try {
+                        translatedMessage = await autoTranslateText(notification.message, userLang);
+                    } catch (e) {
+                        translatedMessage = notification.message;
+                    }
+                }
+                
                 item.innerHTML = 
                     '<div class="notification-icon" style="background: ' + iconColor + ';">' + icon + '</div>' +
                     '<div class="notification-content">' +
                         '<div class="notification-title">' + translatedTitle + '</div>' +
-                        (notification.message ? '<div class="notification-message">' + notification.message + '</div>' : '') +
+                        (translatedMessage ? '<div class="notification-message">' + translatedMessage + '</div>' : '') +
                         '<div class="notification-time">' + time + '</div>' +
-                    '</div>';
+                    '</div>' +
+                    '<button class="notification-delete-btn" data-notif-id="' + notification.id + '" title="' + (t('delete') || 'Delete') + '">✕</button>';
+                
+                // Attach delete handler (stopPropagation to avoid triggering notification click)
+                var deleteBtn = item.querySelector('.notification-delete-btn');
+                (function(notifId, el) {
+                    deleteBtn.onclick = function(e) {
+                        e.stopPropagation();
+                        deleteNotification(notifId, el);
+                    };
+                })(notification.id, item);
                 
                 container.appendChild(item);
-            });
+            }
         } else {
-            console.error('Invalid response format:', response);
             container.innerHTML = '<div class="notification-empty">' + t('errorLoadingNotifications') + '</div>';
         }
     } catch (error) {
-        console.error('Error loading notifications:', error);
         container.innerHTML = '<div class="notification-empty">' + t('errorLoadingNotifications') + '</div>';
     }
 }
@@ -513,9 +601,6 @@ function getNotificationIconColor(type) {
 }
 
 function handleNotificationClick(notification) {
-    console.log('Notification clicked:', notification);
-    
-    // Mark as read
     var isRead = notification.read_status === 1 || notification.read_status === true || notification.read_status === '1';
     if (!isRead) {
         notificationsAPI.markAsRead([notification.id], false).then(function() {
@@ -560,8 +645,51 @@ async function markAllNotificationsAsRead() {
         await loadNotifications();
         await updateNotificationBadge();
     } catch (error) {
-        console.error('Error marking all as read:', error);
         showToast('Error marking notifications as read');
+    }
+}
+
+async function deleteNotification(notifId, element) {
+    try {
+        // Animate out
+        if (element) {
+            element.style.transition = 'all 0.3s ease';
+            element.style.transform = 'translateX(100%)';
+            element.style.opacity = '0';
+        }
+        
+        await notificationsAPI.delete(notifId);
+        
+        // Remove from DOM after animation
+        setTimeout(function() {
+            if (element && element.parentNode) {
+                element.parentNode.removeChild(element);
+            }
+            // Check if list is now empty
+            var container = document.getElementById('notificationsList');
+            if (container && container.querySelectorAll('.notification-item').length === 0) {
+                container.innerHTML = '<div class="notification-empty">' + t('noNotifications') + '</div>';
+            }
+            updateNotificationBadge();
+        }, 300);
+    } catch (error) {
+        // Revert animation on error
+        if (element) {
+            element.style.transform = '';
+            element.style.opacity = '';
+        }
+        showToast(t('errorLoadingNotifications') || 'Error');
+    }
+}
+
+async function clearAllNotifications() {
+    try {
+        await notificationsAPI.deleteAll();
+        await loadNotifications();
+        await updateNotificationBadge();
+        showToast(t('allNotificationsCleared') || 'All notifications cleared');
+    } catch (error) {
+        showToast('Error clearing notifications');
     }
 }
 
@@ -603,19 +731,14 @@ function notifyInterestedUsers(itemId) {
 // Update time displays periodically
 function updateItemTimes() {
     var timeElements = document.querySelectorAll('.card-time[data-created-at], #modalTime[data-created-at]');
-    console.log('updateItemTimes: Found', timeElements.length, 'time elements');
     timeElements.forEach(function(el) {
         var createdAt = el.getAttribute('data-created-at');
         if (createdAt) {
             var newTime = formatTimeAgo(createdAt);
             var currentTime = el.textContent.trim();
-            // Only update if the time has actually changed
             if (currentTime !== newTime) {
-                console.log('Updating time:', currentTime, '->', newTime, 'for date:', createdAt);
                 el.textContent = newTime;
             }
-        } else {
-            console.log('No data-created-at attribute found on element:', el);
         }
     });
 }
@@ -623,20 +746,15 @@ function updateItemTimes() {
 // Start periodic time updates (more frequent for recent items)
 var timeUpdateInterval = null;
 function startTimeUpdates() {
-    console.log('startTimeUpdates called');
-    updateItemTimes(); // Update immediately
+    updateItemTimes();
     
-    // Clear existing interval if any
     if (timeUpdateInterval) {
         clearInterval(timeUpdateInterval);
     }
     
-    // Update every 5 seconds for very responsive time display (especially for "just now" -> seconds)
     timeUpdateInterval = setInterval(function() {
-        console.log('Time update interval triggered');
         updateItemTimes();
-    }, 5000); // Update every 5 seconds
-    console.log('Time update interval started, will update every 5 seconds');
+    }, 5000);
 }
 
 // NOTE: All messages functions (showMessagesList, showConversation, loadMessagesList, etc.) are now in js/messages.js
@@ -667,16 +785,13 @@ window.addEventListener('storage', function(e) {
 async function checkTermsAcceptance() {
     try {
         const userResponse = await authAPI.getCurrentUser();
-        console.log('User response for terms check:', userResponse);
         if (userResponse.success && userResponse.data) {
             const user = userResponse.data.user;
             const termsRequired = userResponse.data.terms_required;
             
             // Check if terms were never accepted
             if (termsRequired) {
-                console.log('Terms never accepted - showing modal');
-                showTermsModal(true); // true = first time
-                return;
+                showTermsModal(true);
             }
             
             // Check if user accepted an older version
@@ -684,16 +799,12 @@ async function checkTermsAcceptance() {
                 const userVersion = user.terms_version;
                 const currentVersion = TERMS_CONFIG.CURRENT_VERSION;
                 
-                console.log('User terms version:', userVersion, 'Current version:', currentVersion);
-                
                 if (userVersion !== currentVersion) {
-                    console.log('Terms version outdated - showing update modal');
-                    showTermsModal(false); // false = update
+                    showTermsModal(false);
                 }
             }
         }
     } catch (error) {
-        console.error('Error checking terms acceptance:', error);
     }
 }
 
@@ -707,23 +818,11 @@ function showTermsModal(isFirstTime = true) {
     
     // Update text based on whether it's first time or update
     if (isFirstTime) {
-        // First time: stronger language
-        if (getCurrentLanguage() === 'fr') {
-            modalTitle.textContent = '📋 Acceptation requise';
-            modalText.textContent = 'Pour utiliser Letshare, vous devez lire et accepter nos Conditions Générales d\'Utilisation et notre Politique de confidentialité.';
-        } else {
-            modalTitle.textContent = '📋 Acceptance Required';
-            modalText.textContent = 'To use Letshare, you must read and accept our Terms of Service and Privacy Policy.';
-        }
+        modalTitle.textContent = t('termsModalTitleFirst');
+        modalText.textContent = t('termsModalTextFirst');
     } else {
-        // Update: softer language
-        if (getCurrentLanguage() === 'fr') {
-            modalTitle.textContent = '📋 Conditions mises à jour';
-            modalText.textContent = 'Nos CGU et Politique de confidentialité ont été mises à jour. Veuillez les lire et les accepter pour continuer.';
-        } else {
-            modalTitle.textContent = '📋 Terms Updated';
-            modalText.textContent = 'Our Terms of Service and Privacy Policy have been updated. Please read and accept them to continue.';
-        }
+        modalTitle.textContent = t('termsModalTitleUpdate');
+        modalText.textContent = t('termsModalTextUpdate');
     }
     
     modal.style.display = 'flex';
@@ -744,32 +843,43 @@ function showTermsModal(isFirstTime = true) {
     // Handle accept
     acceptBtn.onclick = async function() {
         if (!checkbox.checked) return;
-        
+
         acceptBtn.disabled = true;
         acceptBtn.textContent = t('saving') || 'Enregistrement...';
-        
+
         try {
+            // Récupérer le token CSRF via l'API utilitaire
+            let csrfToken = null;
+            if (window.getCSRFToken) {
+                csrfToken = await window.getCSRFToken();
+            } else if (window.api && window.api.getCSRFToken) {
+                csrfToken = await window.api.getCSRFToken();
+            } else if (window.csrfToken) {
+                csrfToken = window.csrfToken;
+            }
+
             const response = await fetch('api/accept-terms.php', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {})
                 },
                 body: JSON.stringify({
                     version: TERMS_CONFIG.CURRENT_VERSION
                 }),
                 credentials: 'include'
             });
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 modal.style.display = 'none';
-                
+
                 // Update user data in localStorage
                 const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
                 currentUser.terms_version = TERMS_CONFIG.CURRENT_VERSION;
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                
+
                 if (isFirstTime) {
                     showToast(t('termsAcceptedSuccess') || '✓ Conditions acceptées avec succès');
                 } else {
@@ -781,7 +891,6 @@ function showTermsModal(isFirstTime = true) {
                 acceptBtn.textContent = t('acceptAndContinue') || 'Accepter et continuer';
             }
         } catch (error) {
-            console.error('Error accepting terms:', error);
             alert(t('errorOccurred') || 'Une erreur est survenue');
             acceptBtn.disabled = false;
             acceptBtn.textContent = t('acceptAndContinue') || 'Accepter et continuer';
@@ -810,4 +919,52 @@ function openPrivacyInLanguage() {
     const url = lang === 'en' ? 'privacy-en.html' : 'privacy.html';
     window.open(url, '_blank');
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof initCustomSelects === 'undefined') {
+        // Copie locale si non déjà défini
+        function initCustomSelects() {
+            const customSelects = document.querySelectorAll('.custom-select');
+            customSelects.forEach(select => {
+                const trigger = select.querySelector('.select-trigger');
+                const options = select.querySelector('.select-options');
+                const optionItems = select.querySelectorAll('.select-option');
+                const hiddenInput = select.nextElementSibling;
+                const selectText = select.querySelector('.select-text');
+                trigger.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    document.querySelectorAll('.custom-select').forEach(otherSelect => {
+                        if (otherSelect !== select) {
+                            otherSelect.querySelector('.select-trigger').classList.remove('active');
+                            otherSelect.querySelector('.select-options').classList.remove('open');
+                        }
+                    });
+                    trigger.classList.toggle('active');
+                    options.classList.toggle('open');
+                });
+                optionItems.forEach(option => {
+                    option.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        optionItems.forEach(opt => opt.classList.remove('selected'));
+                        this.classList.add('selected');
+                        const value = this.getAttribute('data-value');
+                        const text = this.textContent;
+                        selectText.textContent = text;
+                        hiddenInput.value = value;
+                        select.setAttribute('data-value', value);
+                        trigger.classList.remove('active');
+                        options.classList.remove('open');
+                    });
+                });
+            });
+            document.addEventListener('click', function() {
+                document.querySelectorAll('.custom-select').forEach(select => {
+                    select.querySelector('.select-trigger').classList.remove('active');
+                    select.querySelector('.select-options').classList.remove('open');
+                });
+            });
+        }
+    }
+    initCustomSelects();
+});
 

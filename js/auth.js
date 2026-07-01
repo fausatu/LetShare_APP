@@ -47,7 +47,6 @@ async function getCurrentUser(forceRefresh = false) {
             };
         }
     } catch (error) {
-        console.error('Failed to get current user:', error);
         // If API fails, try localStorage as fallback
         if (!forceRefresh) {
             var storedUser = localStorage.getItem('currentUser');

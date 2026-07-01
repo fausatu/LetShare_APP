@@ -61,7 +61,6 @@ try {
     }
     
 } catch (PDOException $e) {
-    error_log('Resend verification error: ' . $e->getMessage());
     sendResponse(false, 'An error occurred. Please try again later.', null, 500);
 }
 

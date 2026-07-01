@@ -1,17 +1,20 @@
-# Disable error display (to prevent output before JSON)
-php_flag display_errors Off
-php_flag display_startup_errors Off
-php_value error_reporting E_ALL
-php_flag log_errors On
+# Note: PHP-CGI doesn't support php_flag/php_value directives
+# Error handling is done via ini_set() in each PHP file
 
-# Enable CORS headers for InfinityFree
+# Enable CORS headers for IONOS production
 <IfModule mod_headers.c>
     # Set CORS headers for our domain
-    Header always set Access-Control-Allow-Origin "https://letshare.infinityfreeapp.com"
+    Header always set Access-Control-Allow-Origin "https://letshare-app.fr"
     Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, PATCH, OPTIONS"
     Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
     Header always set Access-Control-Allow-Credentials "true"
     Header always set Access-Control-Max-Age "86400"
+    
+    # Security headers
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always unset X-Powered-By
 </IfModule>
 
 # Handle CORS preflight requests (OPTIONS)

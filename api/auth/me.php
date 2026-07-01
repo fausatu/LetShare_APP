@@ -19,7 +19,6 @@ try {
         'terms_required' => $termsRequired
     ]);
 } catch (PDOException $e) {
-    error_log("Database error in me.php: " . $e->getMessage());
     // Fallback: send user data without terms check
     sendResponse(true, 'User data retrieved', ['user' => $user]);
 }

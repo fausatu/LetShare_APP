@@ -7,6 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Settings - LetShare</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/settings.css?v=20260112">
     <style>
         /* Force l'application des styles personnalisés */
@@ -360,7 +361,18 @@
                 <input type="hidden" id="language" name="language" value="en">
             </div>
 
-            <button class="btn btn-primary" onclick="savePreferences()">Save Preferences</button>
+            <button class="btn btn-primary" onclick="savePreferences()" data-i18n="savePreferences">Save Preferences</button>
+        </div>
+
+        <!-- Blocked Users Section -->
+        <div class="settings-section">
+            <h2 class="section-title">
+                <span data-i18n="blockedUsersSection">Blocked Users</span>
+            </h2>
+            <p class="setting-description" style="color: #6b7280; font-size: 0.85rem; margin-bottom: 1rem;" data-i18n="blockedUsersDesc">Users you have blocked won't be able to see your items or message you.</p>
+            <div id="blockedUsersList" style="min-height: 40px;">
+                <p style="color: #9ca3af; text-align: center; padding: 1rem;" data-i18n="loadingBlockedUsers">Loading...</p>
+            </div>
         </div>
 
         <!-- Account Section -->
@@ -422,7 +434,7 @@
             <div class="setting-item">
                 <div class="setting-info">
                     <div class="setting-label" data-i18n="appVersion">App Version</div>
-                    <div class="setting-description" data-i18n="appVersionText">LetShare v1.0.0</div>
+                    <div class="setting-description" data-i18n="appVersionText">LetShare v1.1.0</div>
                 </div>
             </div>
 
@@ -488,6 +500,7 @@
     <script src="js/translations.js"></script>
     <script src="js/api.js"></script>
     <script src="js/push-notifications.js"></script>
+    <script src="js/utils.js"></script>
     <script src="js/settings.js"></script>
 </body>
 </html>

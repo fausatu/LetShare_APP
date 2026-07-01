@@ -12,8 +12,9 @@ ADD COLUMN requester_confirmed_at TIMESTAMP NULL AFTER owner_confirmed_at,
 ADD COLUMN confirmation_reminder_sent_at TIMESTAMP NULL AFTER requester_confirmed_at;
 
 -- Add new status for partial confirmation (when only one person has confirmed)
+-- Must include ALL existing values including cancelled
 ALTER TABLE conversations 
-MODIFY COLUMN status ENUM('pending', 'accepted', 'rejected', 'completed', 'partial_confirmed') DEFAULT 'pending';
+MODIFY COLUMN status ENUM('pending', 'accepted', 'rejected', 'completed', 'partial_confirmed', 'cancelled') DEFAULT 'pending';
 
 -- Add indexes for performance
 ALTER TABLE conversations 

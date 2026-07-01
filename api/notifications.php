@@ -4,6 +4,11 @@ require_once 'config.php';
 $method = $_SERVER['REQUEST_METHOD'];
 $user = requireAuth();
 
+// Require CSRF token for state-changing requests
+if ($method !== 'GET') {
+    requireCSRFToken();
+}
+
 try {
     $pdo = getDBConnection();
     
@@ -76,17 +81,22 @@ try {
             break;
             
         case 'DELETE':
-            // Delete notification
+            // Delete notification(s)
+            $deleteAll = isset($_GET['all']) && $_GET['all'] === 'true';
             $notificationId = $_GET['id'] ?? null;
             
-            if (!$notificationId) {
-                sendResponse(false, 'Notification ID required', null, 400);
+            if ($deleteAll) {
+                // Delete all notifications for this user
+                $stmt = $pdo->prepare("DELETE FROM notifications WHERE user_id = ?");
+                $stmt->execute([$user['id']]);
+                sendResponse(true, 'All notifications deleted');
+            } elseif ($notificationId) {
+                $stmt = $pdo->prepare("DELETE FROM notifications WHERE id = ? AND user_id = ?");
+                $stmt->execute([$notificationId, $user['id']]);
+                sendResponse(true, 'Notification deleted');
+            } else {
+                sendResponse(false, 'Notification ID or all=true required', null, 400);
             }
-            
-            $stmt = $pdo->prepare("DELETE FROM notifications WHERE id = ? AND user_id = ?");
-            $stmt->execute([$notificationId, $user['id']]);
-            
-            sendResponse(true, 'Notification deleted');
             break;
             
         default:
@@ -102,7 +112,6 @@ try {
  */
 function createNotification($pdo, $userId, $type, $title, $message = '', $relatedItemId = null, $relatedConversationId = null, $relatedUserId = null) {
     try {
-        error_log('createNotification called with params: userId=' . $userId . ', type=' . $type . ', title=' . $title);
         
         $stmt = $pdo->prepare("
             INSERT INTO notifications (user_id, type, title, message, related_item_id, related_conversation_id, related_user_id)
@@ -113,18 +122,14 @@ function createNotification($pdo, $userId, $type, $title, $message = '', $relate
         
         if (!$result) {
             $errorInfo = $stmt->errorInfo();
-            error_log('Error executing notification insert: ' . print_r($errorInfo, true));
             throw new Exception('Failed to insert notification: ' . $errorInfo[2]);
         }
         
         $notificationId = $pdo->lastInsertId();
-        error_log('Notification inserted successfully with ID: ' . $notificationId);
         return $notificationId;
     } catch (PDOException $e) {
-        error_log('PDO Exception in createNotification: ' . $e->getMessage());
         throw $e;
     } catch (Exception $e) {
-        error_log('Exception in createNotification: ' . $e->getMessage());
         throw $e;
     }
 }

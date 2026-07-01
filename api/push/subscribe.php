@@ -6,7 +6,6 @@ ini_set('log_errors', 1);
 
 // Set error handler to catch all errors
 set_error_handler(function($errno, $errstr, $errfile, $errline) {
-    error_log("PHP Error [$errno]: $errstr in $errfile on line $errline");
     if ($errno === E_ERROR || $errno === E_PARSE || $errno === E_CORE_ERROR) {
         sendResponse(false, 'PHP Error: ' . $errstr, [
             'file' => $errfile,
@@ -19,8 +18,6 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
 
 // Set exception handler
 set_exception_handler(function($exception) {
-    error_log('Uncaught exception: ' . $exception->getMessage());
-    error_log('Stack trace: ' . $exception->getTraceAsString());
     sendResponse(false, 'Uncaught exception: ' . $exception->getMessage(), [
         'file' => $exception->getFile(),
         'line' => $exception->getLine()
@@ -32,32 +29,27 @@ require_once '../config.php';
 
 try {
     $user = requireAuth();
+    // Require CSRF token for POST request
+    requireCSRFToken();
 } catch (Exception $authError) {
-    error_log('Auth error in push subscribe: ' . $authError->getMessage());
     sendResponse(false, 'Authentication required: ' . $authError->getMessage(), null, 401);
 }
 
 // Log request info before reading input
-error_log('Push subscribe - Content-Type: ' . ($_SERVER['CONTENT_TYPE'] ?? 'not set'));
-error_log('Push subscribe - Request method: ' . ($_SERVER['REQUEST_METHOD'] ?? 'not set'));
 
 $data = getRequestData();
 
 // Log received data for debugging
-error_log('Push subscribe - Received data: ' . json_encode($data));
-error_log('Push subscribe - Data keys: ' . implode(', ', array_keys($data)));
 
 $subscription = $data['subscription'] ?? null;
 $userId = $data['userId'] ?? $user['id'];
 
 if (!$subscription) {
-    error_log('Push subscribe - No subscription data provided');
     sendResponse(false, 'Subscription data is required', null, 400);
 }
 
 // Validate subscription structure
 if (!isset($subscription['endpoint'])) {
-    error_log('Push subscribe - Missing endpoint in subscription');
     sendResponse(false, 'Subscription endpoint is required', null, 400);
 }
 
@@ -75,7 +67,6 @@ if (isset($subscription['keys']) && is_array($subscription['keys'])) {
 }
 
 if (empty($p256dh) || empty($auth)) {
-    error_log('Push subscribe - Missing keys. Subscription structure: ' . json_encode($subscription));
     sendResponse(false, 'Subscription keys (p256dh and auth) are required', null, 400);
 }
 
@@ -94,14 +85,11 @@ try {
                 $columnType = strtoupper($columnInfo['Type']);
                 // If it's VARCHAR or has a size limit, change it to TEXT
                 if (strpos($columnType, 'VARCHAR') !== false || (strpos($columnType, 'TEXT') === false)) {
-                    error_log('Fixing endpoint column from ' . $columnType . ' to TEXT');
                     $pdo->exec("ALTER TABLE push_subscriptions MODIFY COLUMN endpoint TEXT NOT NULL");
-                    error_log('Endpoint column fixed to TEXT');
                 }
             }
         }
     } catch (PDOException $e) {
-        error_log('Column fix attempt note: ' . $e->getMessage());
     }
     
     // Try to ensure table exists (create if not exists)
@@ -142,12 +130,10 @@ try {
             if (strpos($e->getMessage(), 'Duplicate key name') === false && 
                 strpos($e->getMessage(), 'already exists') === false &&
                 strpos($e->getMessage(), 'Duplicate foreign key') === false) {
-                error_log('Foreign key error (non-critical): ' . $e->getMessage());
             }
         }
     } catch (PDOException $e) {
         // If table creation fails for other reasons, log but continue
-        error_log('Table setup note: ' . $e->getMessage());
     }
     
     // Validate data before insert
@@ -156,7 +142,6 @@ try {
     }
     
     if (empty($p256dh) || empty($auth)) {
-        error_log('Missing keys - p256dh: ' . (empty($p256dh) ? 'empty' : 'present') . ', auth: ' . (empty($auth) ? 'empty' : 'present'));
         sendResponse(false, 'Subscription keys are required', null, 400);
     }
     
@@ -164,7 +149,6 @@ try {
     // Note: We use a simple INSERT with manual duplicate check since TEXT columns
     // can't easily have unique constraints with prefix indexes
     // First, try to update existing subscription
-    error_log('Checking for existing subscription for user ' . $userId . ' with endpoint length: ' . strlen($subscription['endpoint']));
     
     // Use LIKE for TEXT column comparison (more reliable than = for TEXT)
     $checkStmt = $pdo->prepare("SELECT id FROM push_subscriptions WHERE user_id = ? AND endpoint LIKE ?");
@@ -172,7 +156,6 @@ try {
     $existing = $checkStmt->fetch();
     
     if ($existing) {
-        error_log('Updating existing subscription ID: ' . $existing['id']);
         // Update existing subscription
         $stmt = $pdo->prepare("
             UPDATE push_subscriptions 
@@ -188,27 +171,22 @@ try {
             ]);
             
             if ($result) {
-                error_log('Push subscription updated successfully for user ' . $userId);
                 sendResponse(true, 'Push subscription updated');
                 return;
             } else {
                 $errorInfo = $stmt->errorInfo();
-                error_log('Update failed: ' . json_encode($errorInfo));
                 throw new PDOException('Update failed: ' . ($errorInfo[2] ?? 'Unknown error'));
             }
         } catch (PDOException $e) {
-            error_log('PDO Exception during update: ' . $e->getMessage());
             throw $e;
         }
     } else {
-        error_log('Inserting new subscription for user ' . $userId);
         // Insert new subscription
         $stmt = $pdo->prepare("
             INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth)
             VALUES (?, ?, ?, ?)
         ");
         
-        error_log('Executing insert with userId: ' . $userId . ', endpoint length: ' . strlen($subscription['endpoint']) . ', p256dh length: ' . strlen($p256dh) . ', auth length: ' . strlen($auth));
         
         try {
             $result = $stmt->execute([
@@ -219,18 +197,13 @@ try {
             ]);
             
             if ($result) {
-                error_log('Push subscription inserted successfully for user ' . $userId);
                 sendResponse(true, 'Push subscription saved');
                 return;
             } else {
                 $errorInfo = $stmt->errorInfo();
-                error_log('Insert failed: ' . json_encode($errorInfo));
-                error_log('SQL State: ' . ($errorInfo[0] ?? 'N/A') . ', Error Code: ' . ($errorInfo[1] ?? 'N/A') . ', Error Message: ' . ($errorInfo[2] ?? 'N/A'));
                 throw new PDOException('Insert failed: ' . ($errorInfo[2] ?? 'Unknown error'));
             }
         } catch (PDOException $e) {
-            error_log('PDO Exception during insert: ' . $e->getMessage());
-            error_log('PDO Exception code: ' . $e->getCode());
             throw $e;
         }
     }
@@ -238,7 +211,6 @@ try {
     // Special handling for duplicate subscription (constraint violation)
     if ($e->getCode() == 23000) {
         $isDev = isDevelopment();
-        error_log('Push subscribe constraint violation: ' . $e->getMessage());
         if ($isDev) {
             sendResponse(false, 'Subscription already exists or constraint violation: ' . $e->getMessage(), null, 400);
         } else {

@@ -32,6 +32,9 @@ var API_BASE_URL_PUSH = (function() {
     return 'api';
 })();
 
+// Import getCSRFToken from api.js if available
+// Assumes api.js is loaded before this script
+// If using modules, replace with import statement
 var pushNotificationsManager = {
     registration: null,
     subscription: null,
@@ -39,7 +42,6 @@ var pushNotificationsManager = {
     // Initialize push notifications
     async init() {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-            console.log('Push notifications are not supported in this browser');
             return false;
         }
         
@@ -70,24 +72,19 @@ var pushNotificationsManager = {
                 swPath = basePath + '/sw.js';
             }
             
-            console.log('Registering Service Worker at:', swPath);
             this.registration = await navigator.serviceWorker.register(swPath, {
-                scope: pathname.substring(0, pathname.lastIndexOf('/') + 1) || '/' // Use current directory as scope
+                scope: pathname.substring(0, pathname.lastIndexOf('/') + 1) || '/'
             });
-            console.log('Service Worker registered:', this.registration);
             
             // Check if already subscribed
             this.subscription = await this.registration.pushManager.getSubscription();
             
             if (this.subscription) {
-                console.log('Already subscribed to push notifications');
-                // Update subscription on server
                 await this.updateSubscriptionOnServer(this.subscription);
             }
             
             return true;
         } catch (error) {
-            console.error('Error initializing push notifications:', error);
             return false;
         }
     },
@@ -123,9 +120,6 @@ var pushNotificationsManager = {
                     applicationServerKey: this.urlBase64ToUint8Array(vapidPublicKey)
                 });
                 
-                console.log('Subscribed to push notifications:', this.subscription);
-                
-                // Send subscription to server - this will throw if user is not authenticated
                 try {
                     await this.updateSubscriptionOnServer(this.subscription);
                 } catch (serverError) {
@@ -134,7 +128,6 @@ var pushNotificationsManager = {
                         await this.subscription.unsubscribe();
                         this.subscription = null;
                     } catch (unsubError) {
-                        console.warn('Failed to unsubscribe after server error:', unsubError);
                     }
                     // Re-throw the error so caller can handle it
                     throw serverError;
@@ -142,7 +135,6 @@ var pushNotificationsManager = {
                 
                 return true;
             } catch (error) {
-                console.error('Error subscribing to push notifications:', error);
                 throw error;
             }
     },
@@ -159,7 +151,6 @@ var pushNotificationsManager = {
                 
                 return true;
             } catch (error) {
-                console.error('Error unsubscribing from push notifications:', error);
                 throw error;
             }
         }
@@ -199,7 +190,6 @@ var pushNotificationsManager = {
             const data = await response.json();
             return data.publicKey;
         } catch (error) {
-            console.error('Error getting VAPID key:', error);
             return null;
         }
     },
@@ -209,7 +199,6 @@ var pushNotificationsManager = {
         try {
             // Try to get user ID from multiple sources
             var userId = null;
-            
             // First, try localStorage
             var storedUser = localStorage.getItem('currentUser');
             if (storedUser) {
@@ -217,10 +206,8 @@ var pushNotificationsManager = {
                     var user = JSON.parse(storedUser);
                     userId = user.id;
                 } catch (e) {
-                    console.warn('Could not parse user from localStorage');
                 }
             }
-            
             // If still no userId, try API call to get current user
             if (!userId && typeof authAPI !== 'undefined' && authAPI.getCurrentUser) {
                 try {
@@ -231,54 +218,40 @@ var pushNotificationsManager = {
                         localStorage.setItem('currentUser', JSON.stringify(response.data.user));
                     }
                 } catch (e) {
-                    console.warn('Could not get user from API:', e);
                 }
             }
-            
             // Fallback: try getCurrentUserSync if available
             if (!userId && typeof getCurrentUserSync === 'function') {
                 try {
                     var currentUser = getCurrentUserSync();
                     userId = currentUser ? currentUser.id : null;
                 } catch (e) {
-                    console.warn('Could not get user from getCurrentUserSync:', e);
                 }
             }
-            
             if (!userId) {
-                console.warn('User not logged in, cannot save push subscription');
                 throw new Error('User not authenticated. Please refresh the page and try again.');
             }
-            
             // Convert PushSubscription object to plain object for JSON serialization
-            // PushSubscription has getKey() method that returns ArrayBuffer
             let p256dh = '';
             let auth = '';
-            
             try {
                 if (subscription.getKey) {
-                    // Modern API: getKey returns ArrayBuffer
                     const p256dhKey = subscription.getKey('p256dh');
                     const authKey = subscription.getKey('auth');
-                    
                     if (p256dhKey) {
                         const p256dhArray = new Uint8Array(p256dhKey);
                         p256dh = btoa(String.fromCharCode.apply(null, p256dhArray));
                     }
-                    
                     if (authKey) {
                         const authArray = new Uint8Array(authKey);
                         auth = btoa(String.fromCharCode.apply(null, authArray));
                     }
                 } else if (subscription.keys) {
-                    // Fallback: keys might already be base64 strings
                     p256dh = subscription.keys.p256dh || '';
                     auth = subscription.keys.auth || '';
                 }
             } catch (e) {
-                console.error('Error extracting subscription keys:', e);
             }
-            
             const subscriptionData = {
                 endpoint: subscription.endpoint,
                 keys: {
@@ -286,51 +259,46 @@ var pushNotificationsManager = {
                     auth: auth
                 }
             };
-            
-            console.log('Subscription data to send:', {
-                endpoint: subscriptionData.endpoint,
-                hasP256dh: !!subscriptionData.keys.p256dh,
-                hasAuth: !!subscriptionData.keys.auth
-            });
-            
+            // --- CSRF PATCH START ---
+            // Fetch CSRF token using getCSRFToken from api.js
+            let csrfToken = null;
+            if (typeof getCSRFToken === 'function') {
+                csrfToken = await getCSRFToken();
+            }
             const url = API_BASE_URL_PUSH + '/push/subscribe.php';
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            if (csrfToken) {
+                headers['X-CSRF-Token'] = csrfToken;
+            }
             const response = await fetch(url, {
                 method: 'POST',
-                credentials: 'include', // Include cookies for session authentication
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                credentials: 'include',
+                headers: headers,
                 body: JSON.stringify({
                     subscription: subscriptionData,
                     userId: userId
                 })
             });
-            
-            // Get response text first to see what we're dealing with
             const responseText = await response.text();
             let data;
             try {
                 data = JSON.parse(responseText);
             } catch (e) {
-                console.error('Failed to parse response as JSON:', responseText);
                 throw new Error('Server returned invalid JSON: ' + responseText.substring(0, 200));
             }
-            
             if (!response.ok) {
-                console.error('Server error response:', data);
                 const errorMsg = data.message || 'HTTP ' + response.status;
                 const errorDetails = data.data ? ' Details: ' + JSON.stringify(data.data) : '';
                 throw new Error(errorMsg + errorDetails);
             }
-            
             if (data.success) {
-                console.log('Push subscription saved on server');
+                // Success
             } else {
-                console.error('Subscription save failed:', data);
                 throw new Error(data.message || 'Failed to save subscription');
             }
         } catch (error) {
-            console.error('Error updating subscription on server:', error);
         }
     },
     
@@ -346,7 +314,6 @@ var pushNotificationsManager = {
                     var user = JSON.parse(storedUser);
                     userId = user.id;
                 } catch (e) {
-                    console.warn('Could not parse user from localStorage');
                 }
             }
             
@@ -361,18 +328,26 @@ var pushNotificationsManager = {
             }
             
             const url = API_BASE_URL_PUSH + '/push/unsubscribe.php';
+            // Fetch CSRF token using getCSRFToken from api.js
+            let csrfToken = null;
+            if (typeof getCSRFToken === 'function') {
+                csrfToken = await getCSRFToken();
+            }
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            if (csrfToken) {
+                headers['X-CSRF-Token'] = csrfToken;
+            }
             await fetch(url, {
                 method: 'POST',
-                credentials: 'include', // Include cookies for session authentication
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                credentials: 'include',
+                headers: headers,
                 body: JSON.stringify({
                     userId: userId
                 })
             });
         } catch (error) {
-            console.error('Error removing subscription from server:', error);
         }
     },
     

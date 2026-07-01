@@ -16,20 +16,10 @@ try {
             break;
             
         case 'POST':
-            // Create new university (admin only - for now, allow any authenticated user)
-            $user = requireAuth();
-            $data = getRequestData();
-            $name = trim($data['name'] ?? '');
-            $code = trim($data['code'] ?? '');
-            
-            if (empty($name) || empty($code)) {
-                sendResponse(false, 'Name and code are required', null, 400);
-            }
-            
-            $stmt = $pdo->prepare("INSERT INTO universities (name, code) VALUES (?, ?)");
-            $stmt->execute([$name, $code]);
-            
-            sendResponse(true, 'University created', ['id' => $pdo->lastInsertId()]);
+            // Create new university - DISABLED for security
+            // Universities should be created manually by admin in database
+            // To enable: add is_admin column to users table and check here
+            sendResponse(false, 'University creation is restricted to administrators', null, 403);
             break;
             
         default:

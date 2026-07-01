@@ -1,5 +1,19 @@
                 // IMMEDIATE AUTH CHECK - Runs as soon as script loads
         // This MUST run synchronously to prevent page from loading
+        
+        // Helper to clear localStorage while preserving persistent settings
+        function clearAuthLocalStorage() {
+            var lang = null;
+            var lastSeenVersion = localStorage.getItem('lastSeenVersion');
+            try {
+                var s = JSON.parse(localStorage.getItem('userSettings') || '{}');
+                if (s.language) lang = s.language;
+            } catch (e) {}
+            localStorage.clear();
+            if (lang) localStorage.setItem('userSettings', JSON.stringify({ language: lang }));
+            if (lastSeenVersion) localStorage.setItem('lastSeenVersion', lastSeenVersion);
+        }
+        
         (async function immediateAuthCheck() {
             // Clear localStorage user data first to force fresh API check
             localStorage.removeItem('currentUser');
@@ -8,7 +22,7 @@
             try {
                 const isAuth = await checkAuth();
                 if (!isAuth) {
-                    localStorage.clear();
+                    clearAuthLocalStorage();
                     sessionStorage.clear();
                     // Use replace to prevent back button
                     window.location.replace('login.html?nocache=' + Date.now());
@@ -17,7 +31,7 @@
                 }
             } catch (error) {
                 // If check fails or returns false, clear everything and redirect
-                localStorage.clear();
+                clearAuthLocalStorage();
                 sessionStorage.clear();
                 window.location.replace('login.html?nocache=' + Date.now());
                 // Prevent any further code execution
@@ -25,7 +39,6 @@
             }
         })().catch(function(error) {
             // Silently catch to prevent console errors, redirect is already happening
-            console.log('Redirecting to login...');
         });
         
         // Check authentication before loading settings
@@ -39,16 +52,15 @@
                 const isAuth = await checkAuth();
                 if (!isAuth) {
                     // User is not authenticated, clear everything and redirect to login
-                    localStorage.clear();
+                    clearAuthLocalStorage();
                     sessionStorage.clear();
                     window.location.replace('login.html?nocache=' + Date.now());
                     return false;
                 }
                 return true;
             } catch (error) {
-                console.error('Auth check error:', error);
                 // On error, assume not authenticated
-                localStorage.clear();
+                clearAuthLocalStorage();
                 sessionStorage.clear();
                 window.location.replace('login.html?nocache=' + Date.now());
                 return false;
@@ -68,7 +80,7 @@
                 const userResponse = await authAPI.getCurrentUser();
                 if (!userResponse.success || !userResponse.data) {
                     // If user data cannot be loaded, clear everything and redirect to login
-                    localStorage.clear();
+                    clearAuthLocalStorage();
                     sessionStorage.clear();
                     window.location.replace('login.html?nocache=' + Date.now());
                     return;
@@ -87,7 +99,6 @@
                 if (typeof applyTranslations === 'function') {
                     applyTranslations();
                 } else {
-                    console.error('applyTranslations function not found');
                 }
                 
                 // Load profile from API
@@ -133,21 +144,21 @@
                     autoDeleteRejectedToggle.classList.remove('active');
                     
                     // Set conversation management toggle (default to true if undefined)
-                    console.log('Auto delete rejected value:', user.auto_delete_rejected_conversations);
                     if (user.auto_delete_rejected_conversations === true || user.auto_delete_rejected_conversations === undefined || user.auto_delete_rejected_conversations === null) {
                         autoDeleteRejectedToggle.classList.add('active');
-                        console.log('Toggle set to active');
                     } else {
-                        console.log('Toggle set to inactive');
                     }
                 }
                 
-                // Load notifications (from localStorage for now, can be moved to API later)
-                var notificationSettings = settings.notifications || {};
+                // Load notifications preferences from API
+                var notificationPrefs = user.notification_preferences || {};
                 ['messages', 'requests', 'accepted', 'reviews'].forEach(function(key) {
                     var toggle = document.querySelector('[data-setting="' + key + '"]');
-                    if (toggle && notificationSettings[key] !== false) {
-                        toggle.classList.add('active');
+                    if (toggle) {
+                        // Default to true if not explicitly set to false
+                        if (notificationPrefs[key] !== false) {
+                            toggle.classList.add('active');
+                        }
                     }
                 });
                 
@@ -160,7 +171,6 @@
                 setTimeout(() => {
                     if (typeof applyTranslations === 'function') {
                         applyTranslations();
-                        console.log('Translations applied after settings load');
                     }
                 }, 100);
                 
@@ -168,7 +178,7 @@
                 var avatarPreview = document.getElementById('avatarPreview');
                 if (avatarPreview) {
                     if (user.avatar) {
-                        avatarPreview.innerHTML = '<img src="' + user.avatar + '" alt="Avatar">';
+                        avatarPreview.innerHTML = '<img src="' + escapeHtml(user.avatar) + '" alt="Avatar">';
                     } else {
                         // Show user initials if no avatar
                         var initials = user.name ? user.name.split(' ').map(function(n) { return n[0]; }).join('').toUpperCase() : 'U';
@@ -177,7 +187,6 @@
                     }
                 }
             } catch (error) {
-                console.error('Error loading settings:', error);
                 // Fallback to localStorage
                 var settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
                 if (settings.fullName) document.getElementById('fullName').value = settings.fullName;
@@ -203,7 +212,7 @@
                 var avatarPreview = document.getElementById('avatarPreview');
                 if (avatarPreview) {
                     if (settings.avatar) {
-                        avatarPreview.innerHTML = '<img src="' + settings.avatar + '" alt="Avatar">';
+                        avatarPreview.innerHTML = '<img src="' + escapeHtml(settings.avatar) + '" alt="Avatar">';
                     } else {
                         // Show user initials if no avatar
                         var userName = settings.fullName || document.getElementById('fullName').value || 'User';
@@ -216,9 +225,45 @@
         }
 
         // Toggle switch
-        function toggleSwitch(element) {
+        async function toggleSwitch(element) {
+            var previousState = element.classList.contains('active');
             element.classList.toggle('active');
-            saveNotificationSettings();
+            try {
+                await saveNotificationSettings();
+            } catch (error) {
+                // Revert on failure
+                if (previousState) {
+                    element.classList.add('active');
+                } else {
+                    element.classList.remove('active');
+                }
+            }
+        }
+
+        // Save notification settings to API
+        async function saveNotificationSettings() {
+            var prefs = {};
+            
+            ['messages', 'requests', 'accepted', 'reviews'].forEach(function(key) {
+                var toggle = document.querySelector('[data-setting="' + key + '"]');
+                if (toggle) {
+                    prefs[key] = toggle.classList.contains('active');
+                }
+            });
+            
+            try {
+                var response = await usersAPI.update({ notification_preferences: prefs });
+                if (response.success) {
+                    var isFr = getCurrentLanguage() === 'fr';
+                    showToast(isFr ? 'Paramètres de notification mis à jour' : 'Notification settings updated', 'success');
+                } else {
+                    throw new Error(response.message || 'Failed to save notification settings');
+                }
+            } catch (error) {
+                var errMsg = getCurrentLanguage() === 'fr' ? 'Échec de la sauvegarde des notifications' : 'Failed to save notification settings';
+                showToast(errMsg, 'error');
+                throw error; // Re-throw so toggleSwitch can revert
+            }
         }
 
         // Toggle privacy setting
@@ -226,53 +271,33 @@
             var previousState = element.classList.contains('active');
             element.classList.toggle('active');
             var isActive = element.classList.contains('active');
-            
             try {
                 var updateData = {};
                 updateData[settingKey] = isActive;
-                
-                var response = await fetch(API_BASE_URL + '/users.php', {
+                // Use apiRequest from api.js for CSRF and error handling
+                var result = await apiRequest('users', {
                     method: 'PUT',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(updateData)
+                    body: updateData
                 });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to update privacy setting');
-                }
-                
-                var result = await response.json();
                 if (result.success && result.data) {
                     // Update localStorage with new user data from API response
                     var currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-                    // Merge all updated fields from API response
                     Object.keys(result.data).forEach(function(key) {
                         if (result.data[key] !== undefined) {
                             currentUser[key] = result.data[key];
                         }
                     });
                     localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                    
-                    // Also store in sessionStorage for immediate cross-page updates
                     sessionStorage.setItem('updatedUserData', JSON.stringify(result.data));
                     sessionStorage.setItem('userProfileJustUpdated', 'true');
-                    
-                    // Update the toggle state based on API response
                     if (result.data[settingKey] === true || result.data[settingKey] === 1) {
                         element.classList.add('active');
                     } else {
                         element.classList.remove('active');
                     }
-                    
-                    // Dispatch event to notify other pages (like profile page)
                     window.dispatchEvent(new CustomEvent('userProfileUpdated', {
                         detail: result.data
                     }));
-                    
-                    // Also dispatch a specific privacy setting changed event
                     window.dispatchEvent(new CustomEvent('privacySettingUpdated', {
                         detail: {
                             setting: settingKey,
@@ -280,15 +305,12 @@
                             userData: result.data
                         }
                     }));
-                    
                     const message = getCurrentLanguage() === 'fr' ? 'Paramètre de confidentialité mis à jour' : 'Privacy setting updated';
                     showToast(message, 'success');
                 } else {
                     throw new Error(result.message || 'Failed to update privacy setting');
                 }
             } catch (error) {
-                console.error('Error updating privacy setting:', error);
-                // Revert toggle on error
                 if (previousState) {
                     element.classList.add('active');
                 } else {
@@ -297,21 +319,6 @@
                 const errorMessage = getCurrentLanguage() === 'fr' ? 'Échec de la mise à jour. Veuillez réessayer.' : 'Failed to update privacy setting. Please try again.';
                 showToast(errorMessage, 'error');
             }
-        }
-
-        // Save notification settings
-        function saveNotificationSettings() {
-            var settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
-            if (!settings.notifications) settings.notifications = {};
-            
-            ['messages', 'requests', 'accepted', 'reviews'].forEach(function(key) {
-                var toggle = document.querySelector('[data-setting="' + key + '"]');
-                if (toggle) {
-                    settings.notifications[key] = toggle.classList.contains('active');
-                }
-            });
-            
-            localStorage.setItem('userSettings', JSON.stringify(settings));
         }
 
         // Save profile
@@ -374,7 +381,6 @@
                     throw new Error(response.message || 'Failed to update profile');
                 }
             } catch (error) {
-                console.error('Error saving profile:', error);
                 showToast('Error: ' + (error.message || 'Failed to update profile'), 'error');
             }
         }
@@ -440,7 +446,6 @@
                 
                 showToast(t('preferencesSaved'));
             } catch (error) {
-                console.error('Error saving preferences:', error);
                 showToast('Error: ' + (error.message || 'Failed to save preferences'), 'error');
             }
         }
@@ -499,7 +504,6 @@
                         throw new Error(response.message || 'Failed to update avatar');
                     }
                 } catch (error) {
-                    console.error('Error uploading avatar:', error);
                     showToast('Error: ' + (error.message || 'Failed to update avatar'), 'error');
                 }
             };
@@ -528,69 +532,114 @@
             }
             
             try {
-                // TODO: Create password change API endpoint
-                // For now, show a message that this feature is coming soon
-                const passwordMessage = getCurrentLanguage() === 'fr' ? 'Changement de mot de passe bientôt disponible' : 'Password change feature coming soon';
-                showToast(passwordMessage, 'error');
-                // const response = await authAPI.changePassword(current, newPass);
-                // if (response.success) {
-                //     showToast(t('passwordChanged'));
-                //     document.getElementById('currentPassword').value = '';
-                //     document.getElementById('newPassword').value = '';
-                //     document.getElementById('confirmPassword').value = '';
-                // } else {
-                //     throw new Error(response.message || 'Failed to change password');
-                // }
+                const response = await authAPI.changePassword(current, newPass);
+                if (response.success) {
+                    showToast(t('passwordChanged'));
+                    document.getElementById('currentPassword').value = '';
+                    document.getElementById('newPassword').value = '';
+                    document.getElementById('confirmPassword').value = '';
+                } else {
+                    throw new Error(response.message || t('changePasswordFailed'));
+                }
             } catch (error) {
-                console.error('Error changing password:', error);
                 showToast('Error: ' + (error.message || 'Failed to change password'), 'error');
             }
         }
 
         // Export data
-        function exportData() {
-            var data = {
-                settings: JSON.parse(localStorage.getItem('userSettings') || '{}'),
-                messages: JSON.parse(localStorage.getItem('messages') || '[]'),
-                userItems: JSON.parse(localStorage.getItem('userItems') || '[]'),
-                interestedItems: []
-            };
-            
-            // Get interested items
-            for (var i = 0; i < localStorage.length; i++) {
-                var key = localStorage.key(i);
-                if (key && key.startsWith('interested_')) {
-                    data.interestedItems.push(JSON.parse(localStorage.getItem(key)));
-                }
+        async function exportData() {
+            try {
+                var isFr = getCurrentLanguage() === 'fr';
+                showToast(isFr ? 'Préparation de l\'export...' : 'Preparing export...', 'success');
+                
+                // Fetch real user data from API
+                var userResponse = await authAPI.getCurrentUser();
+                var userData = userResponse.success && userResponse.data ? userResponse.data.user : {};
+                
+                // Fetch user's items
+                var itemsData = [];
+                try {
+                    var itemsResponse = await itemsAPI.getAll();
+                    if (itemsResponse.success && itemsResponse.data) {
+                        var allItems = Array.isArray(itemsResponse.data) ? itemsResponse.data : (itemsResponse.data.items || []);
+                        itemsData = allItems.filter(function(item) { return item.user_id == userData.id; });
+                    }
+                } catch (e) { console.error('Error fetching items for export:', e); }
+                
+                // Fetch interested items
+                var interestedData = [];
+                try {
+                    var intResponse = await interestedAPI.getAll();
+                    if (intResponse.success && intResponse.data) {
+                        interestedData = Array.isArray(intResponse.data) ? intResponse.data : [];
+                    }
+                } catch (e) { console.error('Error fetching interested items for export:', e); }
+                
+                // Fetch conversations
+                var conversationsData = [];
+                try {
+                    var convResponse = await messagesAPI.getAll();
+                    if (convResponse.success && convResponse.data) {
+                        conversationsData = Array.isArray(convResponse.data) ? convResponse.data : [];
+                    }
+                } catch (e) { console.error('Error fetching conversations for export:', e); }
+                
+                // Fetch reviews
+                var reviewsData = [];
+                try {
+                    var reviewsResponse = await apiRequest('reviews?user_id=' + userData.id, { method: 'GET' });
+                    if (reviewsResponse.success && reviewsResponse.data) {
+                        reviewsData = Array.isArray(reviewsResponse.data) ? reviewsResponse.data : (reviewsResponse.data.reviews || []);
+                    }
+                } catch (e) { console.error('Error fetching reviews for export:', e); }
+                
+                var data = {
+                    exportDate: new Date().toISOString(),
+                    profile: {
+                        name: userData.name,
+                        email: userData.email,
+                        department: userData.department,
+                        language: userData.language,
+                        created_at: userData.created_at
+                    },
+                    settings: {
+                        show_department: userData.show_department,
+                        show_email: userData.show_email,
+                        allow_messages_from_anyone: userData.allow_messages_from_anyone,
+                        auto_delete_rejected_conversations: userData.auto_delete_rejected_conversations
+                    },
+                    items: itemsData,
+                    interestedItems: interestedData,
+                    conversations: conversationsData,
+                    reviews: reviewsData
+                };
+                
+                var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'letshare-data-' + new Date().toISOString().split('T')[0] + '.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                showToast(t('dataExported'));
+            } catch (error) {
+                var errMsg = getCurrentLanguage() === 'fr' ? 'Erreur lors de l\'export des données' : 'Error exporting data';
+                showToast(errMsg, 'error');
             }
-            
-            var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            var url = URL.createObjectURL(blob);
-            var a = document.createElement('a');
-            a.href = url;
-            a.download = 'letshare-data-' + new Date().toISOString().split('T')[0] + '.json';
-            a.click();
-            URL.revokeObjectURL(url);
-            
-            showToast(t('dataExported'));
         }
 
         // Logout function
-        async function logout() {
+         async function logout() {
             try {
                 await authAPI.logout();
             } catch (error) {
-                console.error('Logout error:', error);
             } finally {
-                // Clear all local storage and session storage
-                localStorage.clear();
+                // Preserve language and version settings across logout
+                clearAuthLocalStorage();
                 sessionStorage.clear();
-                
                 // Force a complete page reload without cache and redirect to login
-                // Using replace() + timestamp to bypass cache
                 window.location.replace('login.html?nocache=' + Date.now());
-                
-                // Also try to clear history for this domain
                 if (window.history && window.history.replaceState) {
                     window.history.replaceState(null, '', 'login.html');
                 }
@@ -606,6 +655,9 @@
         }
         
         function showDeleteAccountConfirmationModal() {
+            var lang = getCurrentLanguage();
+            var isFr = lang === 'fr';
+            
             // Create modal backdrop
             var modal = document.createElement('div');
             modal.className = 'delete-account-modal';
@@ -615,23 +667,34 @@
             var modalContent = document.createElement('div');
             modalContent.style.cssText = 'background: white; border-radius: 12px; padding: 2rem; max-width: 450px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);';
             
+            var modalTitle = isFr ? 'Supprimer le compte' : 'Delete Account';
+            var modalDesc = isFr ? 'Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Cette action est irréversible.' : 'Are you sure you want to permanently delete your account? This action cannot be undone.';
+            var warningLabel = isFr ? 'Attention :' : 'Warning:';
+            var warningText = isFr ? 'Cela supprimera définitivement votre compte et toutes les données associées, y compris :' : 'This will permanently delete your account and all associated data including:';
+            var item1 = isFr ? 'Votre profil et vos informations personnelles' : 'Your profile and personal information';
+            var item2 = isFr ? 'Tous vos articles publiés' : 'All your posted items';
+            var item3 = isFr ? 'Toutes vos conversations et messages' : 'All your conversations and messages';
+            var item4 = isFr ? 'Vos avis et notes' : 'Your reviews and ratings';
+            var cancelLabel = t('cancel');
+            var deleteLabel = t('deleteAccount');
+            
             modalContent.innerHTML = 
-                '<h3 style="margin: 0 0 1rem 0; color: #1f2937; font-size: 1.25rem; font-weight: 600;">Delete Account</h3>' +
-                '<p style="margin: 0 0 1rem 0; color: #6b7280; line-height: 1.6;">Are you sure you want to permanently delete your account? This action cannot be undone.</p>' +
+                '<h3 style="margin: 0 0 1rem 0; color: #1f2937; font-size: 1.25rem; font-weight: 600;">' + modalTitle + '</h3>' +
+                '<p style="margin: 0 0 1rem 0; color: #6b7280; line-height: 1.6;">' + modalDesc + '</p>' +
                 '<div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">' +
                     '<p style="margin: 0; color: #991b1b; font-size: 0.875rem; line-height: 1.5;">' +
-                        '<strong>Warning:</strong> This will permanently delete your account and all associated data including:' +
+                        '<strong>' + warningLabel + '</strong> ' + warningText +
                     '</p>' +
                     '<ul style="margin: 0.5rem 0 0 0; padding-left: 1.5rem; color: #991b1b; font-size: 0.875rem; line-height: 1.8;">' +
-                        '<li>Your profile and personal information</li>' +
-                        '<li>All your posted items</li>' +
-                        '<li>All your conversations and messages</li>' +
-                        '<li>Your reviews and ratings</li>' +
+                        '<li>' + item1 + '</li>' +
+                        '<li>' + item2 + '</li>' +
+                        '<li>' + item3 + '</li>' +
+                        '<li>' + item4 + '</li>' +
                     '</ul>' +
                 '</div>' +
                 '<div style="display: flex; gap: 0.75rem; justify-content: flex-end;">' +
-                    '<button id="cancelDeleteAccountBtn" style="padding: 0.75rem 1.5rem; border: 1px solid #d1d5db; background: white; border-radius: 8px; color: #374151; cursor: pointer; font-weight: 500; transition: all 0.2s;" onmouseover="this.style.background=\'#f9fafb\'" onmouseout="this.style.background=\'white\'">Cancel</button>' +
-                    '<button id="confirmDeleteAccountBtn" style="padding: 0.75rem 1.5rem; border: none; background: #ef4444; border-radius: 8px; color: white; cursor: pointer; font-weight: 500; transition: all 0.2s;" onmouseover="this.style.background=\'#dc2626\'" onmouseout="this.style.background=\'#ef4444\'">Delete Account</button>' +
+                    '<button id="cancelDeleteAccountBtn" style="padding: 0.75rem 1.5rem; border: 1px solid #d1d5db; background: white; border-radius: 8px; color: #374151; cursor: pointer; font-weight: 500; transition: all 0.2s;" onmouseover="this.style.background=\'#f9fafb\'" onmouseout="this.style.background=\'white\'">' + cancelLabel + '</button>' +
+                    '<button id="confirmDeleteAccountBtn" style="padding: 0.75rem 1.5rem; border: none; background: #ef4444; border-radius: 8px; color: white; cursor: pointer; font-weight: 500; transition: all 0.2s;" onmouseover="this.style.background=\'#dc2626\'" onmouseout="this.style.background=\'#ef4444\'">' + deleteLabel + '</button>' +
                 '</div>';
             
             modal.appendChild(modalContent);
@@ -658,7 +721,8 @@
         
         async function confirmDeleteAccount() {
             try {
-                showToast('Deleting account...', 'error');
+                var isFr = getCurrentLanguage() === 'fr';
+                showToast(isFr ? 'Suppression du compte...' : 'Deleting account...', 'error');
                 
                 const response = await usersAPI.deleteAccount();
                 
@@ -667,34 +731,23 @@
                     localStorage.clear();
                     sessionStorage.clear();
                     
-                    showToast('Account deleted successfully. Redirecting...', 'error');
+                    showToast(t('accountDeleted'), 'error');
                     
                     // Redirect to home page after a delay
                     setTimeout(function() {
                         window.location.href = 'index.html';
                     }, 2000);
                 } else {
-                    throw new Error(response.message || 'Failed to delete account');
+                    throw new Error(response.message || (isFr ? 'Échec de la suppression du compte' : 'Failed to delete account'));
                 }
             } catch (error) {
-                console.error('Error deleting account:', error);
-                showToast('Error deleting account. Please try again.', 'error');
+                var errMsg = getCurrentLanguage() === 'fr' ? 'Erreur lors de la suppression du compte. Veuillez réessayer.' : 'Error deleting account. Please try again.';
+                showToast(errMsg, 'error');
             }
         }
 
-        // Toast notification
-        function showToast(message, type) {
-            var toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = type === 'error' ? 'show' : 'show';
-            toast.style.background = type === 'error' 
-                ? 'linear-gradient(135deg, #ef4444, #dc2626)' 
-                : 'linear-gradient(135deg, #4ade80, #22c55e)';
-            
-            setTimeout(function() {
-                toast.classList.remove('show');
-            }, 3000);
-        }
+        // Use the enhanced showToast from utils.js
+        // function showToast is now available globally with improved styling
 
 
         // Apply language to HTML
@@ -724,11 +777,10 @@
                     }
                 }
             } catch (error) {
-                console.error('Error checking push notifications status:', error);
             }
         }
         
-        // Toggle push notifications
+        // Toggle push notifications 
         async function togglePushNotifications(element) {
             var isActive = element.classList.contains('active');
             
@@ -740,7 +792,6 @@
                     const disabledMessage = getCurrentLanguage() === 'fr' ? 'Notifications push désactivées' : 'Push notifications disabled';
                     showToast(disabledMessage, 'success');
                 } catch (error) {
-                    console.error('Error unsubscribing from push notifications:', error);
                     showToast('Error disabling push notifications', 'error');
                 }
             } else {
@@ -772,7 +823,6 @@
                         element.classList.remove('active');
                     }
                 } catch (error) {
-                    console.error('Error subscribing to push notifications:', error);
                     element.classList.remove('active');
                     
                     if (error.message && error.message.includes('User not authenticated')) {
@@ -816,6 +866,78 @@
         // Make togglePrivacySetting available globally
         window.togglePrivacySetting = togglePrivacySetting;
         
+        // Expose all onclick-referenced functions globally
+        window.toggleSwitch = toggleSwitch;
+        window.handleAvatarUpload = handleAvatarUpload;
+        window.saveProfile = saveProfile;
+        window.savePreferences = savePreferences;
+        window.changePassword = changePassword;
+        window.exportData = exportData;
+        window.deleteAccount = deleteAccount;
+        window.togglePushNotifications = togglePushNotifications;
+        window.openTermsInLanguage = openTermsInLanguage;
+        window.openPrivacyInLanguage = openPrivacyInLanguage;
+        window.downloadTermsAsPDF = downloadTermsAsPDF;
+        window.downloadPrivacyAsPDF = downloadPrivacyAsPDF;
+        window.unblockUserFromSettings = unblockUserFromSettings;
+
+        async function loadBlockedUsers() {
+            var container = document.getElementById('blockedUsersList');
+            if (!container) return;
+
+            try {
+                var result = await blockedAPI.getAll();
+                if (!result.success || !result.data || result.data.length === 0) {
+                    container.innerHTML = '<p style="color: #9ca3af; text-align: center; padding: 1rem;" data-i18n="noBlockedUsers">' + (t('noBlockedUsers') || 'No blocked users') + '</p>';
+                    return;
+                }
+
+                var html = '';
+                result.data.forEach(function(blocked) {
+                    var avatarHtml = '';
+                    if (blocked.avatar) {
+                        avatarHtml = '<img src="' + blocked.avatar + '" alt="" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">';
+                    } else {
+                        var initials = blocked.name ? blocked.name.split(' ').map(function(n) { return n[0]; }).join('').toUpperCase() : '?';
+                        avatarHtml = '<div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #10b981, #059669); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.8rem;">' + initials + '</div>';
+                    }
+
+                    html += '<div class="setting-item" id="blocked-user-' + blocked.userId + '" style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem 0;">' +
+                        '<div style="flex-shrink: 0;">' + avatarHtml + '</div>' +
+                        '<div style="flex: 1; min-width: 0;">' +
+                            '<div style="font-weight: 600; color: #1f2937; font-size: 0.9rem;">' + blocked.name + '</div>' +
+                        '</div>' +
+                        '<button onclick="unblockUserFromSettings(' + blocked.userId + ')" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.8rem; border-radius: 0.75rem; background: #f0fdf4; color: #10b981; border: 1px solid #10b981; cursor: pointer; white-space: nowrap;" data-i18n="unblockBtn">' + (t('unblockBtn') || 'Unblock') + '</button>' +
+                    '</div>';
+                });
+
+                container.innerHTML = html;
+            } catch (e) {
+                container.innerHTML = '<p style="color: #ef4444; text-align: center; padding: 1rem;">' + (t('tryAgain') || 'Please try again') + '</p>';
+            }
+        }
+
+        async function unblockUserFromSettings(userId) {
+            try {
+                var result = await blockedAPI.unblock(userId);
+                if (result.success) {
+                    showToast(t('userUnblocked') || 'User unblocked');
+                    // Remove the element from the list
+                    var el = document.getElementById('blocked-user-' + userId);
+                    if (el) el.remove();
+                    // Check if list is now empty
+                    var container = document.getElementById('blockedUsersList');
+                    if (container && container.children.length === 0) {
+                        container.innerHTML = '<p style="color: #9ca3af; text-align: center; padding: 1rem;">' + (t('noBlockedUsers') || 'No blocked users') + '</p>';
+                    }
+                } else {
+                    showToast(result.message || (t('tryAgain') || 'Please try again'));
+                }
+            } catch (e) {
+                showToast(t('tryAgain') || 'Please try again');
+            }
+        }
+        
         // Initialize
         (async function() {
             // Check authentication immediately on page load (even if cached)
@@ -831,6 +953,7 @@
                 applyTranslations();
             }
             await checkPushNotificationsStatus();
+            await loadBlockedUsers();
             
             // Listen for browser back/forward button (popstate event)
             window.addEventListener('popstate', async function(event) {
@@ -886,9 +1009,13 @@
                     credentials: 'include'
                 });
                 
-                const data = await response.json();
+                    if (response.status === 401) {
+                        // Ne rien afficher dans la console si non connecté
+                        return;
+                    }
+                    const data = await response.json();
                 
-                if (data.success && data.data) {
+                    if (data.success && data.data) {
                     const userId = data.data.user.id;
                     
                     if (!userId) {
@@ -933,7 +1060,6 @@
                     infoElement.style.color = '#6b7280';
                 }
             } catch (error) {
-                console.error('Error loading terms acceptance info:', error);
                 const infoElement = document.getElementById('termsAcceptanceInfo');
                 if (infoElement) {
                     infoElement.textContent = getCurrentLanguage() === 'fr' ? 'Erreur de chargement' : 'Loading error';
@@ -964,12 +1090,6 @@
                 const isActive = toggle.classList.contains('active');
                 const newValue = !isActive;
                 
-                console.log('Toggle state:', {
-                    settingName: settingName,
-                    currentlyActive: isActive,
-                    newValue: newValue
-                });
-                
                 const response = await fetch('api/users.php', {
                     method: 'PUT',
                     headers: {
@@ -980,9 +1100,7 @@
                     })
                 });
                 
-                console.log('API Response status:', response.status);
                 const result = await response.json();
-                console.log('API Response data:', result);
                 
                 if (result.success) {
                     if (newValue) {
@@ -990,14 +1108,12 @@
                     } else {
                         toggle.classList.remove('active');
                     }
-                    console.log('Toggle updated successfully');
                     const message = getCurrentLanguage() === 'fr' ? 'Paramètres sauvegardés' : 'Settings saved';
                     showToast(message, 'success');
                 } else {
                     throw new Error(result.message || 'Failed to save setting');
                 }
             } catch (error) {
-                console.error('Error saving conversation setting:', error);
                 const message = getCurrentLanguage() === 'fr' ? 'Erreur de sauvegarde' : 'Error saving settings';
                 showToast(message, 'error');
             }
