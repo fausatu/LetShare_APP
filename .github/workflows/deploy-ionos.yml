@@ -8,9 +8,13 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      FTP_SERVER: ${{ secrets.IONOS_FTP_SERVER }}
+      FTP_USERNAME: ${{ secrets.IONOS_FTP_USERNAME }}
+      FTP_PASSWORD: ${{ secrets.IONOS_FTP_PASSWORD }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -21,19 +25,28 @@ jobs:
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --no-dev
 
-      - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.IONOS_FTP_SERVER }}
-          username: ${{ secrets.IONOS_FTP_USERNAME }}
-          password: ${{ secrets.IONOS_FTP_PASSWORD }}
-          protocol: ftp
-          local-dir: ./
-          server-dir: /
-          exclude: |
-            **/.git*
-            **/.github*
-            **/node_modules/**
-            **/*.env*
-            **/database/**
-            **/README.md
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: Deploy via FTP (lftp mirror)
+        run: |
+          if [ -z "$FTP_SERVER" ] || [ -z "$FTP_USERNAME" ] || [ -z "$FTP_PASSWORD" ]; then
+            echo "Missing FTP secrets. Please configure IONOS_FTP_SERVER, IONOS_FTP_USERNAME, and IONOS_FTP_PASSWORD."
+            exit 1
+          fi
+
+          lftp -e "
+            set ftp:ssl-allow no;
+            set ssl:verify-certificate no;
+            open -u $FTP_USERNAME,$FTP_PASSWORD $FTP_SERVER;
+            mirror -R ./ / \
+              --delete \
+              --verbose \
+              --exclude-glob .git* \
+              --exclude-glob .github* \
+              --exclude-glob node_modules \
+              --exclude-glob *.env* \
+              --exclude-glob database \
+              --exclude-glob README.md;
+            bye
+          "
