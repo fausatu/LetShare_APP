@@ -259,7 +259,7 @@ Si tu souhaites contribuer, **ouvre d'abord une issue** pour en discuter avant d
 
 ---
 
-## 👤 Auteur
+##  Auteur
 
 Développé par **[Fausatu](https://github.com/fausatu)**,étudiant qui a transformé une observation de couloir en application web.
 
@@ -276,6 +276,6 @@ Toute reproduction, modification ou utilisation commerciale sans autorisation é
 
 <div align="center">
 
-*🎓 Fait avec 💚 pour les étudiants — Give, Swap, Grow 🌱*
+*Fait avec 💚 pour les étudiants *
 
 </div>
