@@ -29,11 +29,16 @@ jobs:
       - name: Deploy via FTP (lftp mirror)
         if: ${{ env.FTP_SERVER != '' && env.FTP_USERNAME != '' && env.FTP_PASSWORD != '' }}
         run: |
+          set -e
           sudo apt-get update && sudo apt-get install -y lftp
           TARGET_DIR="${FTP_TARGET_DIR:-/letshare_ci/}"
-          lftp -e "
+          timeout 20m lftp -e "
+            set cmd:fail-exit yes;
             set ftp:ssl-allow no;
             set ssl:verify-certificate no;
+            set net:max-retries 1;
+            set net:reconnect-interval-base 5;
+            set net:timeout 20;
             open -u $FTP_USERNAME,$FTP_PASSWORD $FTP_SERVER;
             mirror -R ./ $TARGET_DIR \
               --delete \
