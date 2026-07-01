@@ -12,6 +12,7 @@ jobs:
       FTP_SERVER: ${{ secrets.IONOS_FTP_SERVER }}
       FTP_USERNAME: ${{ secrets.IONOS_FTP_USERNAME }}
       FTP_PASSWORD: ${{ secrets.IONOS_FTP_PASSWORD }}
+      FTP_TARGET_DIR: ${{ secrets.IONOS_FTP_TARGET_DIR }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -29,11 +30,12 @@ jobs:
         if: ${{ env.FTP_SERVER != '' && env.FTP_USERNAME != '' && env.FTP_PASSWORD != '' }}
         run: |
           sudo apt-get update && sudo apt-get install -y lftp
+          TARGET_DIR="${FTP_TARGET_DIR:-/letshare_ci/}"
           lftp -e "
             set ftp:ssl-allow no;
             set ssl:verify-certificate no;
             open -u $FTP_USERNAME,$FTP_PASSWORD $FTP_SERVER;
-            mirror -R ./ / \
+            mirror -R ./ $TARGET_DIR \
               --delete \
               --verbose \
               --exclude-glob .git* \
