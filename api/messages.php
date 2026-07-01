@@ -1,8 +1,14 @@
 <?php
 require_once 'config.php';
+require_once 'pusher_config.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $user = requireAuth();
+
+// Require CSRF token for state-changing requests
+if ($method !== 'GET') {
+    requireCSRFToken();
+}
 
 try {
     $pdo = getDBConnection();
@@ -20,8 +26,10 @@ try {
                        i.color as item_color,
                        i.status as item_status,
                        owner.name as owner_name,
+                       owner.avatar as owner_avatar,
                        requester.name as requester_name,
-                       (SELECT text FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
+                       requester.avatar as requester_avatar,
+                       (SELECT COALESCE(text, CASE WHEN image IS NOT NULL THEN '📷 Photo' ELSE NULL END) FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
                        (SELECT created_at FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_time,
                        (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id AND to_user_id = ? AND read_status = 0) as unread_count
                 FROM conversations c
@@ -29,16 +37,32 @@ try {
                 INNER JOIN users owner ON c.owner_id = owner.id
                 INNER JOIN users requester ON c.requester_id = requester.id
                 WHERE (c.owner_id = ? OR c.requester_id = ?)
-                AND (c.hidden_by_user_id IS NULL OR c.hidden_by_user_id != ?)
+                AND (
+                    (c.owner_id = ? AND c.hidden_by_owner = 0)
+                    OR (c.requester_id = ? AND c.hidden_by_requester = 0)
+                    OR c.status IN ('completed', 'rejected', 'cancelled')
+                )
+                AND NOT EXISTS (
+                    SELECT 1 FROM blocked_users bu
+                    WHERE (bu.blocking_user_id = ? AND bu.blocked_user_id = IF(c.owner_id = ?, c.requester_id, c.owner_id))
+                       OR (bu.blocked_user_id = ? AND bu.blocking_user_id = IF(c.owner_id = ?, c.requester_id, c.owner_id))
+                )
                 ORDER BY c.updated_at DESC
             ");
-            $stmt->execute([$userId, $userId, $userId, $userId]);
+            $stmt->execute([$userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId, $userId]);
             $conversations = $stmt->fetchAll();
             
             // Format conversations
             $formattedConversations = array_map(function($conv) use ($userId) {
                 $otherUser = $conv['owner_id'] == $userId ? $conv['requester_name'] : $conv['owner_name'];
                 $isOwner = $conv['owner_id'] == $userId;
+                
+                // Get the avatar of the other user
+                $otherUserAvatar = $isOwner ? $conv['requester_avatar'] : $conv['owner_avatar'];
+                // Ensure avatar is not empty or null
+                if (empty($otherUserAvatar)) {
+                    $otherUserAvatar = null;
+                }
                 
                 $status = $conv['status'] ?? 'pending';
                 $itemStatus = $conv['item_status'] ?? 'active';
@@ -49,7 +73,6 @@ try {
                     $itemTitle = 'Item No Longer Available';
                 }
                 
-                error_log('Formatting conversation ID: ' . $conv['id'] . ', status from DB: ' . $status . ', item_status: ' . $itemStatus);
                 
                 return [
                     'id' => 'conv_' . $conv['item_id'] . '_' . ($isOwner ? $conv['requester_id'] : $conv['owner_id']),
@@ -65,19 +88,19 @@ try {
                     'requester' => $conv['requester_name'],
                     'requesterId' => (int)$conv['requester_id'], // Add requesterId for reviews
                     'otherUser' => $otherUser,
+                    'otherUserAvatar' => $otherUserAvatar, // Add other user's avatar
                     'isOwner' => $isOwner,
                     'lastMessage' => $conv['last_message'] ?? 'No messages yet',
                     'lastUpdate' => $conv['last_message_time'] ?? $conv['updated_at'],
                     'status' => $status,
                     'unreadCount' => (int)$conv['unread_count'],
                     'ownerConfirmedAt' => $conv['owner_confirmed_at'] ?? null,
-                    'requesterConfirmedAt' => $conv['requester_confirmed_at'] ?? null
+                    'requesterConfirmedAt' => $conv['requester_confirmed_at'] ?? null,
+                    'hidden' => $isOwner ? (bool)($conv['hidden_by_owner'] ?? false) : (bool)($conv['hidden_by_requester'] ?? false)
                 ];
             }, $conversations);
             
-            error_log('Total conversations formatted: ' . count($formattedConversations));
             foreach ($formattedConversations as $fc) {
-                error_log('Conversation ID: ' . $fc['id'] . ', status: ' . $fc['status']);
             }
             
             sendResponse(true, 'Conversations retrieved', $formattedConversations);
@@ -85,15 +108,12 @@ try {
             
         case 'POST':
             // Create new message or conversation
-            error_log('=== MESSAGES.PHP POST REQUEST START ===');
             $data = getRequestData();
             $itemId = $data['item_id'] ?? null;
             $messageText = trim($data['message'] ?? '');
             
-            error_log('POST data: itemId=' . $itemId . ', messageText=' . substr($messageText, 0, 50));
             
             if (!$itemId || empty($messageText)) {
-                error_log('ERROR: Item ID or message missing');
                 sendResponse(false, 'Item ID and message are required', null, 400);
             }
             
@@ -103,19 +123,27 @@ try {
             $item = $stmt->fetch();
             
             if (!$item) {
-                error_log('ERROR: Item not found');
                 sendResponse(false, 'Item not found', null, 404);
             }
             
             if ($item['user_id'] == $user['id']) {
-                error_log('ERROR: User trying to request own item');
                 sendResponse(false, 'You cannot request your own item', null, 400);
             }
             
             $ownerId = $item['user_id'];
             $requesterId = $user['id'];
             
-            error_log('Owner ID: ' . $ownerId . ', Requester ID: ' . $requesterId);
+            // Check if either user has blocked the other
+            $stmt = $pdo->prepare("
+                SELECT id FROM blocked_users 
+                WHERE (blocking_user_id = ? AND blocked_user_id = ?) 
+                   OR (blocking_user_id = ? AND blocked_user_id = ?)
+            ");
+            $stmt->execute([$requesterId, $ownerId, $ownerId, $requesterId]);
+            if ($stmt->fetch()) {
+                sendResponse(false, 'You cannot contact this user', null, 403);
+            }
+            
             
             // Check if conversation already exists (any status)
             $stmt = $pdo->prepare("
@@ -133,31 +161,25 @@ try {
                 $conversationId = $existingConv['id'];
                 $existingStatus = $existingConv['status'];
                 
-                error_log('Existing conversation found: ID ' . $conversationId . ', status: ' . $existingStatus);
                 
-                // If conversation is rejected, update it to pending (replace rejected with new request)
-                if ($existingStatus === 'rejected') {
-                    error_log('Conversation was rejected, updating to pending...');
+                // If conversation is rejected or cancelled, update it to pending (reactivate)
+                if ($existingStatus === 'rejected' || $existingStatus === 'cancelled') {
                     $stmt = $pdo->prepare("
                         UPDATE conversations 
-                        SET status = 'pending', updated_at = NOW() 
+                        SET status = 'pending', hidden_by_owner = 0, hidden_by_requester = 0, hidden_at_owner = NULL, hidden_at_requester = NULL, updated_at = NOW() 
                         WHERE id = ?
                     ");
                     $stmt->execute([$conversationId]);
-                    error_log('Updated rejected conversation to pending: ' . $conversationId);
                 } else if ($existingStatus === 'pending' || $existingStatus === 'accepted') {
                     // If pending or accepted, use existing conversation
-                    error_log('Using existing conversation (status: ' . $existingStatus . '): ' . $conversationId);
                 } else {
                     // For completed conversations, create a new one
-                    error_log('Existing conversation is completed, creating new one...');
                     $stmt = $pdo->prepare("
                         INSERT INTO conversations (item_id, owner_id, requester_id, status) 
                         VALUES (?, ?, ?, 'pending')
                     ");
                     $stmt->execute([$itemId, $ownerId, $requesterId]);
                     $conversationId = $pdo->lastInsertId();
-                    error_log('Created new conversation ID: ' . $conversationId);
                 }
             } else {
                 // No existing conversation, create new one
@@ -167,42 +189,44 @@ try {
                 ");
                 $stmt->execute([$itemId, $ownerId, $requesterId]);
                 $conversationId = $pdo->lastInsertId();
-                error_log('Created new conversation ID: ' . $conversationId);
             }
             
-            // Create message
+            // Create message - read_status = 0 means UNREAD for the recipient
             $stmt = $pdo->prepare("
                 INSERT INTO messages (conversation_id, from_user_id, to_user_id, text, read_status) 
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, 0)
             ");
-            $readStatus = ($requesterId == $user['id']) ? 1 : 0; // Messages sent by requester are auto-read
-            $stmt->execute([$conversationId, $requesterId, $ownerId, $messageText, $readStatus]);
-            error_log('Message created successfully');
+            $stmt->execute([$conversationId, $requesterId, $ownerId, $messageText]);
+            $messageId = $pdo->lastInsertId();
+            
+            // Trigger Pusher event for real-time message
+            triggerNewMessage($conversationId, [
+                'id' => (int)$messageId,
+                'conversationId' => (int)$conversationId,
+                'from_user_id' => (int)$requesterId,
+                'to_user_id' => (int)$ownerId,
+                'text' => $messageText,
+                'timestamp' => date('Y-m-d H:i:s'),
+                'read' => false
+            ]);
             
             // Update conversation updated_at
             $stmt = $pdo->prepare("UPDATE conversations SET updated_at = NOW() WHERE id = ?");
             $stmt->execute([$conversationId]);
             
             // Create notification for item owner (new request received)
-            error_log('=== STARTING NOTIFICATION CREATION ===');
             
             // Load notification helper (separate file to avoid HTTP request handling)
             $notificationHelperPath = __DIR__ . '/notification_helper.php';
-            error_log('Notification helper path: ' . $notificationHelperPath);
-            error_log('File exists: ' . (file_exists($notificationHelperPath) ? 'YES' : 'NO'));
             
             if (file_exists($notificationHelperPath)) {
                 require_once $notificationHelperPath;
-                error_log('notification_helper.php loaded successfully');
                 
                 // Check if function exists
                 if (function_exists('createNotification')) {
-                    error_log('createNotification function exists');
                 } else {
-                    error_log('ERROR: createNotification function does NOT exist after require!');
                 }
             } else {
-                error_log('ERROR: notification_helper.php file not found at: ' . $notificationHelperPath);
             }
             
             $itemTitle = '';
@@ -214,7 +238,6 @@ try {
                 $itemTitle = $item['title'];
                 $itemType = $item['type']; // 'donation' or 'exchange'
             }
-            error_log('Item title: ' . $itemTitle . ', type: ' . $itemType);
             
             $requesterName = '';
             $stmt = $pdo->prepare("SELECT name FROM users WHERE id = ?");
@@ -223,56 +246,42 @@ try {
             if ($requester) {
                 $requesterName = $requester['name'];
             }
-            error_log('Requester name: ' . $requesterName);
             
-            $notificationTitle = 'New request received';
+            // Get owner's language for notification
+            $ownerLang = getUserLanguage($pdo, $ownerId);
+            
+            $notificationTitle = getNotifText('new_request', $ownerLang);
             if ($itemType === 'donation') {
-                $notificationMessage = $requesterName . ' is interested in your donation: ' . $itemTitle;
+                $notificationMessage = getNotifText('interested_in_donation', $ownerLang, ['name' => $requesterName, 'item' => $itemTitle]);
             } else {
-                $notificationMessage = $requesterName . ' wants to exchange for: ' . $itemTitle;
+                $notificationMessage = getNotifText('interested_in_loan', $ownerLang, ['name' => $requesterName, 'item' => $itemTitle]);
             }
             
-            error_log('Notification title: ' . $notificationTitle);
-            error_log('Notification message: ' . $notificationMessage);
             
             // Only create notification if this is a new conversation or if we reactivated a rejected one
             $isNewOrReactivated = !$existingConv || ($existingConv && $existingConv['status'] === 'rejected');
             if ($isNewOrReactivated) {
-                error_log('=== CREATING NEW REQUEST NOTIFICATION ===');
-                error_log('Params: ownerId=' . $ownerId . ', type=request, itemId=' . $itemId . ', conversationId=' . $conversationId . ', requesterId=' . $requesterId);
                 try {
                     if (!function_exists('createNotification')) {
-                        error_log('ERROR: createNotification function does not exist!');
                     } else {
-                        error_log('createNotification function exists, calling it...');
                         $notificationId = createNotification($pdo, $ownerId, 'request', $notificationTitle, $notificationMessage, $itemId, $conversationId, $requesterId);
-                        error_log('SUCCESS: Notification created with ID: ' . $notificationId);
                     }
                 } catch (Exception $e) {
-                    error_log('EXCEPTION creating notification: ' . $e->getMessage());
-                    error_log('Stack trace: ' . $e->getTraceAsString());
                 } catch (Error $e) {
-                    error_log('ERROR creating notification: ' . $e->getMessage());
-                    error_log('Stack trace: ' . $e->getTraceAsString());
                 }
             } else {
                 // For existing conversations, create a message notification
-                error_log('=== CREATING MESSAGE NOTIFICATION FOR EXISTING CONVERSATION ===');
                 try {
                     if (!function_exists('createNotification')) {
-                        error_log('ERROR: createNotification function does not exist!');
                     } else {
-                        $notificationId = createNotification($pdo, $ownerId, 'message', 'New message', $messageText, $itemId, $conversationId, $requesterId);
-                        error_log('SUCCESS: Message notification created with ID: ' . $notificationId);
+                        $messageNotificationTitle = getNotifText('new_message', $ownerLang);
+                        $notificationId = createNotification($pdo, $ownerId, 'message', $messageNotificationTitle, $messageText, $itemId, $conversationId, $requesterId);
                     }
                 } catch (Exception $e) {
-                    error_log('EXCEPTION creating message notification: ' . $e->getMessage());
                 } catch (Error $e) {
-                    error_log('ERROR creating message notification: ' . $e->getMessage());
                 }
             }
             
-            error_log('=== MESSAGES.PHP POST REQUEST END ===');
             
             sendResponse(true, 'Message sent successfully', [
                 'conversation_id' => $conversationId,

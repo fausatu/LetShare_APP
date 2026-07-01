@@ -7,11 +7,17 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>My Profile - LetShare</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="stylesheet" href="css/shared.css">
     <link rel="stylesheet" href="css/profile.css">
+    <link rel="stylesheet" href="css/profile_loading.css">
 </head>
 <body>
     <div class="bg-blob blob-1"></div>
     <div class="bg-blob blob-2"></div>
+
+    <!-- Profile module handles its own load event -->
 
     <div class="container">
         <header>
@@ -30,7 +36,7 @@
                 </div>
             </a>
             <div style="display: flex; gap: 1rem; align-items: center;">
-                <a href="settings.html" class="btn-back" style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2);">
+                <a href="settings.html" class="btn-back" id="settingsLink" style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2);">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="3"></circle>
                         <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"></path>
@@ -47,25 +53,26 @@
         </header>
 
         <div class="profile-header">
-            <div class="profile-avatar">FA</div>
+            <div class="profile-header profile-loading">
+                <div class="profile-avatar"></div>
             <div class="university-logo-container" id="universityLogoContainer" style="display: none;">
                 <img id="universityLogo" src="" alt="University Logo" style="max-width: 80px; max-height: 40px; object-fit: contain; margin-top: 10px;">
             </div>
-            <h2 class="profile-name">Fausat Akintoyesé</h2>
-            <p class="profile-major">Finance Major</p>
+            <h2 class="profile-name"></h2>
+            <p class="profile-major"></p>
             <div class="profile-rating">
                 <div class="stars" id="profileStars">
                     <!-- Stars will be generated dynamically -->
                 </div>
-                <span class="rating-value" id="profileRating">4.9</span>
-                <span class="reviews-count" id="profileReviews">(32 reviews)</span>
+                <span class="rating-value" id="profileRating"></span>
+                <span class="reviews-count" id="profileReviews"></span>
             </div>
             <div class="profile-stats">
                 <div class="stat-box">
                     <div class="stat-value" id="postedCount">0</div>
                     <div class="stat-label" data-i18n="itemsPosted">Items Posted</div>
                 </div>
-                <div class="stat-box">
+                <div class="stat-box" id="statInterested">
                     <div class="stat-value" id="interestedCount">0</div>
                     <div class="stat-label" data-i18n="itemsInterested">Items Interested</div>
                 </div>
@@ -76,14 +83,14 @@
             </div>
         </div>
 
-        <div class="tabs">
-            <button class="tab active" onclick="switchTab('posted', this)" data-i18n="myPosts">My Posts</button>
-            <button class="tab" onclick="switchTab('interested', this)" data-i18n="interested">Interested</button>
-            <button class="tab" onclick="switchTab('messages', this)" data-i18n="requests">Requests</button>
-            <button class="tab" onclick="switchTab('history', this)" data-i18n="history">History</button>
+        <div class="tabs profile-loading">
+            <button class="tab active" id="tabPosts" onclick="switchTab('posted', this)" data-i18n="myPosts">My Posts</button>
+            <button class="tab" id="tabInterested" onclick="switchTab('interested', this)" data-i18n="interested">Interested</button>
+            <button class="tab" id="tabMessages" onclick="switchTab('messages', this)" data-i18n="requests">Requests</button>
+            <button class="tab" id="tabHistory" onclick="switchTab('history', this)" data-i18n="history">History</button>
         </div>
 
-        <div class="tabs-container">
+        <div class="tabs-container profile-loading">
         <div id="posted" class="content-section active">
             <div class="items-grid" id="postedItems">
                 <!-- Items will be loaded dynamically -->
@@ -107,6 +114,7 @@
                 <!-- History will be loaded dynamically -->
             </div>
         </div>
+
     </div>
 
 
@@ -141,13 +149,108 @@
         </div>
     </div>
 
+    <!-- Reviews Modal -->
+    <div class="reviews-modal" id="reviewsModal">
+        <div class="reviews-content">
+            <button class="modal-close" onclick="closeReviewsModal()">✕</button>
+            <h2 data-i18n="reviews">Reviews</h2>
+            <div id="reviewsList"></div>
+        </div>
+    </div>
+
+    <!-- Feedback Modal (Leave a Review) -->
+    <div class="feedback-modal" id="feedbackModal" onclick="if(event.target.id === 'feedbackModal') closeFeedbackModal()">
+        <div class="feedback-modal-content">
+            <button class="modal-close" onclick="closeFeedbackModal()" style="position: absolute; top: 1.5rem; right: 1.5rem;">✕</button>
+            <h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem; font-weight: 600; color: #1f2937;">How was your exchange?</h2>
+            <p style="color: #6b7280; margin-bottom: 1.5rem; font-size: 0.875rem;">Share your experience with <span id="feedbackUserName"></span></p>
+            <form id="feedbackForm" onsubmit="submitFeedback(event)">
+                <div class="form-group">
+                    <label class="form-label">Overall experience</label>
+                    <div class="feedback-type-buttons">
+                        <button type="button" class="feedback-type-btn" data-type="positive" onclick="selectFeedbackType('positive')">
+                            <span style="font-size: 1.5rem;">😊</span>
+                            <span>Positive</span>
+                        </button>
+                        <button type="button" class="feedback-type-btn" data-type="neutral" onclick="selectFeedbackType('neutral')">
+                            <span style="font-size: 1.5rem;">😐</span>
+                            <span>Neutral</span>
+                        </button>
+                        <button type="button" class="feedback-type-btn" data-type="negative" onclick="selectFeedbackType('negative')">
+                            <span style="font-size: 1.5rem;">😞</span>
+                            <span>Negative</span>
+                        </button>
+                    </div>
+                    <input type="hidden" id="feedbackType" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Rating</label>
+                    <div class="rating-stars" id="feedbackRating">
+                        <span class="star-rating" data-rating="1" onclick="selectRating(1)">★</span>
+                        <span class="star-rating" data-rating="2" onclick="selectRating(2)">★</span>
+                        <span class="star-rating" data-rating="3" onclick="selectRating(3)">★</span>
+                        <span class="star-rating" data-rating="4" onclick="selectRating(4)">★</span>
+                        <span class="star-rating" data-rating="5" onclick="selectRating(5)">★</span>
+                    </div>
+                    <input type="hidden" id="feedbackRatingValue" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Comments (optional)</label>
+                    <textarea class="form-textarea" id="feedbackText" placeholder="Tell us more about your experience..." rows="4"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="feedbackWouldRecommend" style="width: 18px; height: 18px; cursor: pointer;">
+                        <span>Would you recommend this user?</span>
+                    </label>
+                </div>
+                
+                <div class="feedback-actions">
+                    <button type="button" class="btn-skip" onclick="skipFeedback()">Skip</button>
+                    <button type="submit" class="btn-submit">Submit Feedback</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="confirmation-modal" id="confirmationModal" style="display: none;">
+        <div class="confirmation-modal-content">
+            <div class="confirmation-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                </svg>
+            </div>
+            <h2 id="confirmationTitle">Confirm Action</h2>
+            <p id="confirmationMessage">Are you sure you want to proceed?</p>
+            <div class="confirmation-buttons">
+                <button class="btn-cancel" onclick="closeConfirmationModal()">Cancel</button>
+                <button class="btn-confirm-action" id="confirmActionBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div class="toast" id="toast">
         <span id="toastMessage"></span>
     </div>
+    
+      <!-- Pusher SDK for real-time chat -->
+    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+    
 
     <script src="js/translations.js"></script>
+    <script src="js/utils.js"></script>
     <script src="js/api.js"></script>
-    <script src="js/profile.js"></script>
+    <script src="js/pusher-chat.js"></script>
+    <script src="js/modals.js"></script>
+    <script src="js/conversation-modal.js"></script>
+    <script src="js/feedback.js"></script>
+    <script type="module" src="js/profile-main.js"></script>
 </body>
 </html>

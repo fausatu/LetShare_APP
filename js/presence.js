@@ -29,7 +29,6 @@ async function updatePresence() {
     try {
         await presenceAPI.updatePresence();
     } catch (error) {
-        console.error('Error updating presence:', error);
         // Don't show error to user, just log it
     }
 }

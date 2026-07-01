@@ -3,6 +3,12 @@ require_once 'config.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
+// Require CSRF token for state-changing requests
+if ($method !== 'GET') {
+    requireAuth();
+    requireCSRFToken();
+}
+
 try {
     $pdo = getDBConnection();
     
@@ -69,6 +75,8 @@ try {
             $conversationId = $data['conversation_id'] ?? null;
             $rating = $data['rating'] ?? null;
             $reviewText = $data['review_text'] ?? '';
+            $feedbackType = $data['feedback_type'] ?? 'positive';
+            $wouldRecommend = isset($data['would_recommend']) ? (bool)$data['would_recommend'] : null;
             
             if (!$reviewedUserId) {
                 sendResponse(false, 'Reviewed user ID is required', null, 400);
@@ -144,21 +152,25 @@ try {
             // Create review
             try {
                 $stmt = $pdo->prepare("
-                    INSERT INTO user_reviews (reviewed_user_id, reviewer_user_id, conversation_id, rating, review_text)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO user_reviews (reviewed_user_id, reviewer_user_id, conversation_id, rating, review_text, feedback_type, would_recommend)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 ");
-                $stmt->execute([$reviewedUserId, $user['id'], $conversationId, $rating, trim($reviewText)]);
+                $stmt->execute([$reviewedUserId, $user['id'], $conversationId, $rating, trim($reviewText), $feedbackType, $wouldRecommend]);
                 
                 $reviewId = (int)$pdo->lastInsertId();
                 
                 // Create notification for the reviewed user
                 require_once 'notification_helper.php';
-                $notificationTitle = 'New Review';
-                $notificationMessage = $reviewerName . ' left you a ' . $rating . '-star review for "' . $itemTitle . '"';
+                $reviewedUserLang = getUserLanguage($pdo, $reviewedUserId);
+                $notificationTitle = getNotifText('new_review', $reviewedUserLang);
+                $notificationMessage = getNotifText('review_received', $reviewedUserLang, [
+                    'name' => $reviewerName,
+                    'rating' => $rating,
+                    'item' => $itemTitle
+                ]);
                 try {
                     createNotification($pdo, $reviewedUserId, 'review', $notificationTitle, $notificationMessage, $itemId, $conversationId, $user['id']);
                 } catch (Exception $e) {
-                    error_log('Error creating review notification: ' . $e->getMessage());
                     // Don't fail the review creation if notification fails
                 }
                 

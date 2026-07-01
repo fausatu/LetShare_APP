@@ -2,11 +2,14 @@
 // ==================================
 
 var currentFeedbackConversation = null;
+var currentFeedbackConversationId = null;
 var selectedFeedbackType = null;
 var selectedRating = 0;
 
 function openFeedbackModal(conversation) {
     currentFeedbackConversation = conversation;
+    // Prefer database id for API calls
+    currentFeedbackConversationId = conversation.dbId || conversation.conversationId || conversation.id || null;
     
     // Get the other user's name
     var currentUser = getCurrentUserSync();
@@ -67,13 +70,20 @@ function openFeedbackModal(conversation) {
     document.getElementById('feedbackType').value = '';
     document.getElementById('feedbackRatingValue').value = '';
     
+    // Move modal to body to escape any stacking context (e.g. .container)
+    var feedbackEl = document.getElementById('feedbackModal');
+    if (feedbackEl.parentElement !== document.body) {
+        document.body.appendChild(feedbackEl);
+    }
+    
     // Show modal
-    document.getElementById('feedbackModal').classList.add('active');
+    feedbackEl.classList.add('active');
 }
 
 function closeFeedbackModal() {
     document.getElementById('feedbackModal').classList.remove('active');
     currentFeedbackConversation = null;
+    currentFeedbackConversationId = null;
     selectedFeedbackType = null;
     selectedRating = 0;
 }
@@ -115,6 +125,11 @@ async function submitFeedback(event) {
         showToast('Error: No conversation selected');
         return;
     }
+
+    if (!currentFeedbackConversationId) {
+        showToast('Error: Conversation information missing');
+        return;
+    }
     
     var feedbackType = selectedFeedbackType;
     var rating = selectedRating;
@@ -132,22 +147,32 @@ async function submitFeedback(event) {
     }
     
     try {
+        
         const response = await feedbackAPI.submit(
-            currentFeedbackConversation.id,
+            currentFeedbackConversationId,
             feedbackType,
             rating,
             feedbackText,
             wouldRecommend
         );
         
+        if (!response) {
+            showToast('Error submitting feedback. Please try again.');
+            return;
+        }
+        
         if (response.success) {
             showToast('Thank you for your feedback!');
+            // Update conversation's hasReviewed flag so button disappears
+            if (globalCurrentConversation) {
+                globalCurrentConversation.hasReviewed = true;
+                loadUniversalConversationActions(globalCurrentConversation);
+            }
             closeFeedbackModal();
         } else {
             throw new Error(response.message || 'Failed to submit feedback');
         }
     } catch (error) {
-        console.error('Error submitting feedback:', error);
         if (error.message && error.message.includes('already submitted')) {
             showToast('You have already submitted feedback for this exchange.');
             closeFeedbackModal();
