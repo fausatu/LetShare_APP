@@ -47,7 +47,12 @@ jobs:
               --exclude-glob node_modules \
               --exclude-glob *.env* \
               --exclude-glob database \
-              --exclude-glob README.md;
+              --exclude-glob README.md \
+              --exclude-glob CONTEXTE.md \
+              --exclude-glob CLAUDE.md \
+              --exclude-glob CONTRIBUTING.md \
+              --exclude-glob tools \
+              --exclude-glob docs;
             bye
           "
 
